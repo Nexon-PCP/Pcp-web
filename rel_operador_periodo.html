@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block top_title %}O que o Operador Fará{% endblock %}
+{% block content %}
+
+<style>
+  .filter-box {
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  }
+
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .filter-group label {
+    font-size: 12px;
+    color: #a9b3c3;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .filter-group input,
+  .filter-group select {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .filter-group input:focus,
+  .filter-group select:focus {
+    outline: none;
+    border-color: rgba(11, 95, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.1);
+  }
+
+  .btn-filtrar {
+    background: linear-gradient(135deg, #0b5fff 0%, #0847cc 100%);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.3s ease;
+  }
+
+  .btn-filtrar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(11, 95, 255, 0.3);
+  }
+
+  .operador-card {
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  }
+
+  .operador-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .operador-nome {
+    font-size: 18px;
+    font-weight: 800;
+    color: #f1f5f9;
+  }
+
+  .operador-stats {
+    display: flex;
+    gap: 20px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: #a9b3c3;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 900;
+    color: #0b5fff;
+  }
+
+  .tarefas-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+
+  .tarefas-table th {
+    background: rgba(11, 95, 255, 0.1);
+    padding: 12px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 800;
+    color: #a9b3c3;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .tarefas-table td {
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    font-size: 13px;
+  }
+
+  .tarefas-table tr:hover {
+    background: rgba(11, 95, 255, 0.05);
+  }
+
+  .tarefa-nome {
+    color: #f1f5f9;
+    font-weight: 700;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .status-planejado {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+
+  .status-execucao {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+  }
+
+  .status-concluido {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+  }
+
+  .empty-message {
+    text-align: center;
+    color: #a9b3c3;
+    padding: 40px 20px;
+    font-size: 14px;
+  }
+
+  .periodo-info {
+    color: #a9b3c3;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+</style>
+
+<!-- Filtros -->
+<div class="filter-box">
+  <form method="GET" class="filter-grid">
+    <div class="filter-group">
+      <label>Operador</label>
+      <select name="operador_id">
+        <option value="">-- Todos os Operadores --</option>
+        {% for op in operadores %}
+          <option value="{{ op.id }}" {% if operador_id == op.id|string %}selected{% endif %}>{{ op.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label>Data Início</label>
+      <input type="date" name="data_inicio" value="{{ data_inicio }}">
+    </div>
+    
+    <div class="filter-group">
+      <label>Data Fim</label>
+      <input type="date" name="data_fim" value="{{ data_fim }}">
+    </div>
+    
+    <button type="submit" class="btn-filtrar">🔍 Filtrar</button>
+  </form>
+</div>
+
+<!-- Relatório -->
+{% if relatorio %}
+  {% for item in relatorio %}
+    <div class="operador-card">
+      <div class="operador-header">
+        <div class="operador-nome">👤 {{ item.operador }}</div>
+        <div class="operador-stats">
+          <div class="stat">
+            <div class="stat-label">Tarefas</div>
+            <div class="stat-value">{{ item.total_tarefas }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Horas</div>
+            <div class="stat-value">{{ "%.1f"|format(item.total_horas) }}</div>
+          </div>
+        </div>
+      </div>
+      
+      <table class="tarefas-table">
+        <thead>
+          <tr>
+            <th>Tarefa</th>
+            <th>Etapa</th>
+            <th>OP</th>
+            <th>Produto</th>
+            <th>Obra</th>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Horas</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tarefa in item.tarefas %}
+            <tr>
+              <td class="tarefa-nome">{{ tarefa.tarefa }}</td>
+              <td>{{ tarefa.etapa }}</td>
+              <td><strong>{{ tarefa.op_numero }}</strong></td>
+              <td>{{ tarefa.produto }}</td>
+              <td>{{ tarefa.obra }}</td>
+              <td>{{ tarefa.data_inicio }}</td>
+              <td>{{ tarefa.data_fim }}</td>
+              <td><strong>{{ tarefa.horas }} h</strong></td>
+              <td>
+                {% if tarefa.status == 'PLANEJADO' %}
+                  <span class="status-badge status-planejado">Planejado</span>
+                {% elif tarefa.status == 'EM_EXECUCAO' %}
+                  <span class="status-badge status-execucao">Em Execução</span>
+                {% elif tarefa.status == 'CONCLUIDO' %}
+                  <span class="status-badge status-concluido">Concluído</span>
+                {% else %}
+                  <span class="status-badge">{{ tarefa.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      
+      <div class="periodo-info">
+        📅 Período: {{ data_inicio }} a {{ data_fim }}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="operador-card">
+    <div class="empty-message">
+      📭 Nenhuma tarefa encontrada para o período selecionado.<br>
+      Tente ajustar os filtros ou adicionar tarefas às OPs.
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

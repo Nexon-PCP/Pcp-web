@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Produtos</h2>
+  <form method="post" action="/produtos/novo" class="row">
+    <input name="nome" placeholder="Nome do produto" required>
+    <button type="submit">+ Adicionar</button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>ID</th><th>Nome</th><th>Ativo</th></tr>
+    {% for p in produtos %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.nome }}</td>
+        <td>{{ "Sim" if p.ativo else "Não" }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Relatórios</h2>
+  <p>Centro de análise e acompanhamento de produção e horas</p>
+</div>
+
+<!-- RESUMO GERAL -->
+<div class="card">
+  <h3>Resumo Geral</h3>
+  <div class="row">
+    <div class="badge">Total de OPs: <strong>{{ total_ops }}</strong></div>
+    <div class="badge">Total de Obras: <strong>{{ total_obras }}</strong></div>
+    <div class="badge">OPs Atrasadas: <strong>{{ ops_atrasadas|length }}</strong></div>
+    <div class="badge">Apontamentos Finalizados: <strong>{{ apont_finalizados }}</strong></div>
+  </div>
+</div>
+
+<!-- RELATÓRIOS PRINCIPAIS -->
+<div class="card">
+  <h3>📊 Relatórios Principais</h3>
+  <ul style="list-style: none; padding: 0;">
+    
+    <!-- Relatório 1: Tarefas por Produto -->
+    <li style="padding: 12px; background-color: #f0f9ff; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #3b82f6;">
+      <a href="/relatorios/tarefas-produto" style="text-decoration: none; color: #333;">
+        <strong style="color: #1e40af;">📦 Tarefas por Produto</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+          Visualize todas as tarefas agrupadas por produto com horas, datas e responsáveis
+        </p>
+      </a>
+    </li>
+
+    <!-- Relatório 2: Horas por Operador -->
+    <li style="padding: 12px; background-color: #f0fdf4; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #16a34a;">
+      <a href="/relatorios/horas-operador" style="text-decoration: none; color: #333;">
+        <strong style="color: #15803d;">👤 Horas por Operador</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+          Veja o total de horas de cada operador com detalhes de tarefas, produtos e prazos
+        </p>
+      </a>
+    </li>
+
+    <!-- Relatorio 3: Produtos por Período -->
+    <li style="padding: 12px; background-color: #e0e7ff; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #6366f1;">
+      <a href="/relatorios/produto-periodo" style="text-decoration: none; color: #333;">
+        <strong style="color: #4f46e5;">📦 Produtos por Período</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+          Selecione um produto e período para visualizar quantas unidades serão produzidas
+        </p>
+      </a>
+    </li>
+
+    <!-- Relatorio 4: O que Operador Fara -->
+    <li style="padding: 12px; background-color: #fef3c7; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #f59e0b;">
+      <a href="/relatorios/operador-periodo" style="text-decoration: none; color: #333;">
+        <strong style="color: #b45309;">👤 Operador por Período</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+          Filtre por operador e período para ver o que ele fará em cada data
+        </p>
+      </a>
+    </li>
+
+    <!-- Relatorio 5: Calendário 2026 -->
+    <li style="padding: 12px; background-color: #fce7f3; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #ec4899;">
+      <a href="/relatorios/calendario-2026" style="text-decoration: none; color: #333;">
+        <strong style="color: #be185d;">📅 Calendário 2026</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+          Visualize todas as datas planejadas em um calendário interativo do ano 2026
+        </p>
+      </a>
+    </li>
+
+  </ul>
+</div>
+
+<!-- FIM DOS RELATORIOS -->
+
+<style>
+  .card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .card h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 24px;
+  }
+
+  .card h3 {
+    color: #555;
+    font-size: 18px;
+    margin-top: 0;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+  }
+
+  .card h4 {
+    color: #666;
+    font-size: 14px;
+    margin-top: 15px;
+  }
+
+  .row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    background: #f3f4f6;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #666;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  li a {
+    display: block;
+    padding: 8px 0;
+    color: #333;
+    text-decoration: none;
+  }
+
+  li a:hover {
+    text-decoration: underline;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+
+  th {
+    background: #f3f4f6;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+</style>
+
+{% endblock %}

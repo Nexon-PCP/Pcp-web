@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>📊 Relatório de Produtos por Período</h2>
+  <p>Visualize quantos produtos serão produzidos em um período específico</p>
+</div>
+
+<!-- FILTROS -->
+<div class="card">
+  <h3>🔍 Filtros</h3>
+  <form method="POST" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
+    
+    <div>
+      <label for="produto" style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 13px;">Produto:</label>
+      <select name="produto" id="produto" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        <option value="">-- Selecione um produto --</option>
+        {% for produto in produtos %}
+          <option value="{{ produto.nome }}" {% if produto.nome == produto_selecionado %}selected{% endif %}>
+            {{ produto.nome }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <div>
+      <label for="data_inicio" style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 13px;">Data Início:</label>
+      <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio }}" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    
+    <div>
+      <label for="data_fim" style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 13px;">Data Fim:</label>
+      <input type="date" name="data_fim" id="data_fim" value="{{ data_fim }}" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    
+    <div>
+      <button type="submit" style="background: #3b82f6; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">Filtrar</button>
+    </div>
+  </form>
+</div>
+
+<!-- RELATÓRIO -->
+{% if relatorio %}
+  {% for item in relatorio %}
+    <div class="card">
+      <h3>{{ item.produto }}</h3>
+      <p style="color: #666; font-size: 13px;">Período: <strong>{{ data_inicio }}</strong> a <strong>{{ data_fim }}</strong></p>
+      
+      <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+        <div class="badge">Total de OPs: <strong>{{ item.total_ops }}</strong></div>
+        <div class="badge">Quantidade Total: <strong style="color: #3b82f6; font-size: 16px;">{{ item.total_quantidade }} unidades</strong></div>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>OP</th>
+            <th>Quantidade</th>
+            <th>Obra</th>
+            <th>Operador</th>
+            <th>Status</th>
+            <th>Progresso</th>
+            <th>Data Início</th>
+            <th>Data Fim</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for op in item.ops %}
+            <tr>
+              <td><strong>{{ op.numero }}</strong></td>
+              <td style="font-weight: bold; color: #3b82f6;">{{ op.quantidade }}</td>
+              <td>{{ op.obra }}</td>
+              <td>{{ op.operador }}</td>
+              <td>
+                <span style="
+                  display: inline-block;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  font-weight: bold;
+                  {% if op.status == 'ABERTA' %}
+                    background: #e3f2fd; color: #1976d2;
+                  {% elif op.status == 'EM_PRODUCAO' %}
+                    background: #fff3e0; color: #f57c00;
+                  {% elif op.status == 'CONCLUIDA' %}
+                    background: #e8f5e9; color: #388e3c;
+                  {% elif op.status == 'ATRASADA' %}
+                    background: #ffebee; color: #d32f2f;
+                  {% endif %}
+                ">
+                  {{ op.status }}
+                </span>
+              </td>
+              <td style="font-size: 12px; background: #f3f4f6; padding: 6px; border-radius: 4px;">{{ op.percentual }}%</td>
+              <td>{{ op.data_inicio }}</td>
+              <td>{{ op.data_fim }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+
+{% elif produto_selecionado %}
+  <div class="card" style="text-align: center; padding: 40px;">
+    <p style="color: #999; font-size: 16px;">❌ Nenhuma OP encontrada para o produto <strong>{{ produto_selecionado }}</strong> no período selecionado.</p>
+  </div>
+
+{% else %}
+  <div class="card" style="text-align: center; padding: 40px;">
+    <p style="color: #999; font-size: 16px;">📋 Selecione um produto e um período para gerar o relatório.</p>
+  </div>
+{% endif %}
+
+<style>
+  .card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .card h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 24px;
+  }
+
+  .card h3 {
+    color: #555;
+    font-size: 18px;
+    margin-top: 0;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+  }
+
+  .badge {
+    background: #f3f4f6;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #666;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+
+  th {
+    background: #f3f4f6;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+</style>
+
+<!-- JavaScript para puxar datas automaticamente -->
+<script>
+  document.getElementById('produto').addEventListener('change', function() {
+    const produtoNome = this.value;
+    
+    if (produtoNome) {
+      // Chamar API para puxar datas de Montagem Eletromecanica
+      fetch(`/api/produto/${encodeURIComponent(produtoNome)}/datas-eletromecanica`)
+        .then(response => response.json())
+        .then(data => {
+          // Preencher os campos de data automaticamente
+          if (data.data_inicio) {
+            document.getElementById('data_inicio').value = data.data_inicio;
+          }
+          if (data.data_fim) {
+            document.getElementById('data_fim').value = data.data_fim;
+          }
+        })
+        .catch(error => console.error('Erro ao buscar datas:', error));
+    }
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OP {{op.numero}} - Impressão</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #fff;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border: 1px solid #ddd;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .info-value {
+            color: #666;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #007bff;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table th {
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 12px;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .badge-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+        }
+        
+        .print-button {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .print-button button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .print-button button:hover {
+            background-color: #0056b3;
+        }
+        
+        @media print {
+            .print-button {
+                display: none;
+            }
+            
+            body {
+                padding: 0;
+            }
+            
+            .container {
+                border: none;
+                padding: 0;
+            }
+        }
+        
+        .status-aberta {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .status-planejado {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .status-em-andamento {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .status-concluido {
+            background-color: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-button">
+        <button onclick="window.print()">🖨️ Imprimir</button>
+        <button onclick="window.history.back()">← Voltar</button>
+    </div>
+    
+    <div class="container">
+        <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1>ORDEM DE PRODUÇÃO #{{op.numero}}</h1>
+                <p>Data de Emissão: {{ now.strftime('%d/%m/%Y %H:%M') }}</p>
+            </div>
+            <div style="font-size: 28px; font-weight: bold; color: #000; text-align: right;">
+                <div>NTC</div>
+                <div style="font-size: 10px; color: #666; letter-spacing: 2px;">REFRIGERAÇÃO</div>
+            </div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Obra:</span>
+                <span class="info-value">{{op.obra.codigo}} - {{op.obra.nome}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Produto:</span>
+                <span class="info-value">{{op.produto}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Quantidade:</span>
+                <span class="info-value">{{op.quantidade}} unidades</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Progresso:</span>
+                <span class="info-value">{{op.percentual}}%</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value"><span class="badge status-{{op.status.lower()}}">{{op.status}}</span></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Previsão Início:</span>
+                <span class="info-value">{{op.prev_inicio or "-"}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Previsão Término:</span>
+                <span class="info-value">{{op.prev_fim or "-"}}</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 ETAPAS DE PRODUÇÃO</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Etapa</th>
+                        <th>Status</th>
+                        <th>Progresso</th>
+                        <th>Horas Planejadas</th>
+                        <th>Horas Realizadas</th>
+                        <th>Responsável</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in op.etapas %}
+                    <tr>
+                        <td><strong>{{e.nome}}</strong></td>
+                        <td><span class="badge status-{{e.status.lower()}}">{{e.status}}</span></td>
+                        <td>{{e.percentual}}%</td>
+                        <td>{{e.horas_planejadas}} h</td>
+                        <td>{{e.horas_realizadas}} h</td>
+                        <td>{{e.responsavel.nome if e.responsavel else "-"}}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if op.etapas and op.etapas[0].tarefas %}
+        <div class="section">
+            <h2>✓ TAREFAS DETALHADAS</h2>
+            {% for e in op.etapas %}
+                {% if e.tarefas %}
+                <h3 style="margin-top: 15px; margin-bottom: 10px; color: #666; font-size: 13px;">Etapa: {{e.nome}}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarefa</th>
+                            <th>Responsável</th>
+                            <th>Horas Previstas</th>
+                            <th>Horas Realizadas</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in e.tarefas %}
+                        <tr>
+                            <td>{{t.titulo}}</td>
+                            <td>{{t.responsavel.nome if t.responsavel else "-"}}</td>
+                            <td>{{t.horas_previstas}} h</td>
+                            <td>{{t.horas_realizadas}} h</td>
+                            <td><span class="badge status-{{t.status.lower()}}">{{t.status}}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="section">
+            <h2>📊 RESUMO</h2>
+            <table>
+                <tr>
+                    <td><strong>Total de Etapas:</strong></td>
+                    <td>{{op.etapas|length}}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total de Horas Planejadas:</strong></td>
+                    <td>{% set total_horas = op.etapas|map(attribute='horas_planejadas')|sum %}{{total_horas}} h</td>
+                </tr>
+                <tr>
+                    <td><strong>Total de Horas Realizadas:</strong></td>
+                    <td>{% set total_realizadas = op.etapas|map(attribute='horas_realizadas')|sum %}{{total_realizadas}} h</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>Documento gerado automaticamente pelo Sistema PCP Industrial</p>
+            <p>Impresso em: {{ now.strftime('%d/%m/%Y às %H:%M:%S') }}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Materiais - Pendências{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-4">📦 Materiais - Pendências</h1>
+        </div>
+    </div>
+
+    <!-- Formulário para adicionar nova pendência -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">➕ Adicionar Pendência de Material</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="row g-2 align-items-end">
+                        <!-- Seleção de Obra -->
+                        <div class="col-md-3">
+                            <label for="obra_id" class="form-label"><strong>Obra</strong></label>
+                            <select class="form-select form-select-sm" id="obra_id" name="obra_id" required onchange="carregarProdutos()">
+                                <option value="">Selecione...</option>
+                                {% for obra in obras %}
+                                    <option value="{{ obra.id }}">{{ obra.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Seleção de Produto -->
+                        <div class="col-md-2">
+                            <label for="produto_id" class="form-label"><strong>Produto</strong></label>
+                            <select class="form-select form-select-sm" id="produto_id" name="produto_id" required disabled>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <!-- Campo de Descrição -->
+                        <div class="col-md-4">
+                            <label for="descricao" class="form-label"><strong>Descrição</strong></label>
+                            <input type="text" class="form-control form-control-sm" id="descricao" name="descricao" 
+                                   placeholder="Ex: Aguardando parafusos M8..." required>
+                        </div>
+
+                        <!-- Botão de Envio -->
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <i class="fas fa-plus"></i> Adicionar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de pendências -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">📋 Pendências Registradas</h5>
+                </div>
+                <div class="card-body">
+                    {% if pendencias %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Obra</th>
+                                        <th>Produto</th>
+                                        <th>Descrição</th>
+                                        <th>Status</th>
+                                        <th>Data</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pendencia in pendencias %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ pendencia.obra.nome }}</strong>
+                                            </td>
+                                            <td>{{ pendencia.produto.nome }}</td>
+                                            <td>
+                                                <small>{{ pendencia.descricao[:100] }}{% if pendencia.descricao|length > 100 %}...{% endif %}</small>
+                                            </td>
+                                            <td>
+                                                {% if pendencia.status == "PENDENTE" %}
+                                                    <span class="badge bg-warning text-dark">⏳ Pendente</span>
+                                                {% elif pendencia.status == "RECEBIDO" %}
+                                                    <span class="badge bg-success">✅ Recebido</span>
+                                                {% elif pendencia.status == "CANCELADO" %}
+                                                    <span class="badge bg-danger">❌ Cancelado</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ pendencia.data_criacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <!-- Botão para ver detalhes -->
+                                                    <button type="button" class="btn btn-outline-info btn-sm" 
+                                                            data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ pendencia.id }}">
+                                                        👁️ Ver
+                                                    </button>
+
+                                                    <!-- Dropdown para mudar status -->
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-outline-secondary dropdown-toggle btn-sm" 
+                                                                type="button" id="statusDropdown{{ pendencia.id }}" 
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                            Status
+                                                        </button>
+                                                        <ul class="dropdown-menu" aria-labelledby="statusDropdown{{ pendencia.id }}">
+                                                            <li>
+                                                                <form method="POST" action="/materiais/{{ pendencia.id }}/atualizar-status" style="display:inline;">
+                                                                    <input type="hidden" name="status" value="PENDENTE">
+                                                                    <button type="submit" class="dropdown-item">⏳ Pendente</button>
+                                                                </form>
+                                                            </li>
+                                                            <li>
+                                                                <form method="POST" action="/materiais/{{ pendencia.id }}/atualizar-status" style="display:inline;">
+                                                                    <input type="hidden" name="status" value="RECEBIDO">
+                                                                    <button type="submit" class="dropdown-item">✅ Recebido</button>
+                                                                </form>
+                                                            </li>
+                                                            <li>
+                                                                <form method="POST" action="/materiais/{{ pendencia.id }}/atualizar-status" style="display:inline;">
+                                                                    <input type="hidden" name="status" value="CANCELADO">
+                                                                    <button type="submit" class="dropdown-item">❌ Cancelado</button>
+                                                                </form>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <!-- Botão deletar -->
+                                                    <form method="POST" action="/materiais/{{ pendencia.id }}/deletar" 
+                                                          style="display:inline;" 
+                                                          onsubmit="return confirm('Tem certeza que deseja deletar esta pendência?');">
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                            🗑️ Deletar
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Modal com detalhes completos -->
+                                        <div class="modal fade" id="modalDetalhes{{ pendencia.id }}" tabindex="-1" aria-labelledby="modalLabel{{ pendencia.id }}" aria-hidden="true">
+                                            <div class="modal-dialog modal-lg">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="modalLabel{{ pendencia.id }}">
+                                                            📦 Detalhes da Pendência
+                                                        </h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="row mb-3">
+                                                            <div class="col-md-6">
+                                                                <strong>Obra:</strong> {{ pendencia.obra.nome }}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>Produto:</strong> {{ pendencia.produto.nome }}
+                                                            </div>
+                                                        </div>
+                                                        <div class="row mb-3">
+                                                            <div class="col-md-6">
+                                                                <strong>Status:</strong>
+                                                                {% if pendencia.status == "PENDENTE" %}
+                                                                    <span class="badge bg-warning text-dark">⏳ Pendente</span>
+                                                                {% elif pendencia.status == "RECEBIDO" %}
+                                                                    <span class="badge bg-success">✅ Recebido</span>
+                                                                {% elif pendencia.status == "CANCELADO" %}
+                                                                    <span class="badge bg-danger">❌ Cancelado</span>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>Data:</strong> {{ pendencia.data_criacao.strftime('%d/%m/%Y %H:%M') }}
+                                                            </div>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-12">
+                                                                <strong>Descrição:</strong>
+                                                                <p style="white-space: pre-wrap; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+                                                                    {{ pendencia.descricao }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Resumo de pendências -->
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="alert alert-info" role="alert">
+                                    <strong>📊 Resumo:</strong>
+                                    Total de pendências: <strong>{{ pendencias|length }}</strong> |
+                                    Pendentes: <strong>{{ pendencias|selectattr('status', 'equalto', 'PENDENTE')|list|length }}</strong> |
+                                    Recebidas: <strong>{{ pendencias|selectattr('status', 'equalto', 'RECEBIDO')|list|length }}</strong> |
+                                    Canceladas: <strong>{{ pendencias|selectattr('status', 'equalto', 'CANCELADO')|list|length }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i> Nenhuma pendência de material registrada.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Função para carregar produtos quando uma obra é selecionada
+    function carregarProdutos() {
+        const obraId = document.getElementById('obra_id').value;
+        const produtoSelect = document.getElementById('produto_id');
+        
+        if (!obraId) {
+            produtoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
+            produtoSelect.disabled = true;
+            return;
+        }
+        
+        // Fazer requisição para obter produtos
+        fetch(`/api/obras/${obraId}/produtos`)
+            .then(response => response.json())
+            .then(data => {
+                // Limpar opções anteriores
+                produtoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
+                
+                // Adicionar novos produtos
+                if (data.length > 0) {
+                    data.forEach(produto => {
+                        const option = document.createElement('option');
+                        option.value = produto.id;
+                        option.textContent = `${produto.nome} (Qtd: ${produto.quantidade})`;
+                        produtoSelect.appendChild(option);
+                    });
+                    produtoSelect.disabled = false;
+                } else {
+                    const option = document.createElement('option');
+                    option.textContent = 'Nenhum produto cadastrado para esta obra';
+                    option.disabled = true;
+                    produtoSelect.appendChild(option);
+                    produtoSelect.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar produtos:', error);
+                produtoSelect.innerHTML = '<option value="">Erro ao carregar produtos</option>';
+                produtoSelect.disabled = true;
+            });
+    }
+</script>
+
+<style>
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .card {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+    }
+
+    .card-header {
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .form-label {
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+    }
+
+    .form-select-sm, .form-control-sm {
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}

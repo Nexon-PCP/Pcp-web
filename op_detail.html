@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <h2 style="margin: 0;">OP {{op.numero}}</h2>
+    <div style="display: flex; gap: 8px;">
+      <form method="post" action="/op/{{op.id}}/salvar-modelo" style="display: inline;">
+        <button type="submit" style="background-color: #4caf50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">💾 Salvar Modelo</button>
+      </form>
+      <a href="/op/{{op.id}}/carregar-modelo" style="background-color: #2196f3; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block;">📂 Carregar Modelo</a>
+      <form method="post" action="/ops/{{op.id}}/sincronizar-etapas" style="display: inline;">
+        <button type="submit" style="background-color: #ff9800; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔄 Sincronizar Etapas</button>
+      </form>
+      <form method="post" action="/ops/{{op.id}}/excluir" style="display: inline;">
+        <button type="submit" onclick="return confirm('Tem certeza que deseja excluir esta OP? Todas as etapas e tarefas serão removidas.')" style="background-color: #f44336; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🗑️ Excluir OP</button>
+      </form>
+    </div>
+  </div>
+  <div class="row">
+    {% if op.obra %}
+      <div class="badge"><b>Obra:</b> {{op.obra.codigo}}</div>
+      <div class="badge"><b>Cliente:</b> {{ op.obra.cliente or 'N/A' }}</div>
+    {% endif %}
+    <div class="badge"><b>Produto:</b> {{op.produto}}</div>
+    <div class="badge"><b>Qtd:</b> {{op.quantidade}}</div>
+  </div>
+  <div class="row" style="margin-top: 8px;">
+    {% if op.obra %}
+      <div class="badge" style="background: #fff3cd;"><b>🔧 Corte/Dobra Início:</b> {{ op.obra.corte_dobra_inicio.strftime('%d/%m/%Y') if op.obra.corte_dobra_inicio else '--' }}</div>
+      <div class="badge" style="background: #fff3cd;"><b>🔧 Corte/Dobra Fim:</b> {{ op.obra.corte_dobra_fim.strftime('%d/%m/%Y') if op.obra.corte_dobra_fim else '--' }}</div>
+      <div class="badge" style="background: #d1ecf1;"><b>⚙️ Montagem Início:</b> {{ op.obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if op.obra.montagem_eletro_inicio else '--' }}</div>
+      <div class="badge" style="background: #d1ecf1;"><b>⚙️ Montagem Fim:</b> {{ op.obra.montagem_eletro_fim.strftime('%d/%m/%Y') if op.obra.montagem_eletro_fim else '--' }}</div>
+    {% endif %}
+    <div class="badge"><b>Progresso:</b> {{op.percentual}}%</div>
+    <div class="status-badge {% if op.status == 'ABERTA' %}status-aberta{% elif op.status == 'EM_EXECUCAO' %}status-em-execucao{% elif op.status == 'CONCLUIDA' %}status-concluida{% elif op.status == 'PAUSADA' %}status-pausada{% endif %}" style="font-size: 14px !important;"><b>Status:</b> {{op.status}}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Etapas</h3>
+  <table>
+    <tr>
+      <th>Etapa</th>
+      <th>Status</th>
+      <th>%</th>
+      <th>Horas Plan.</th>
+      <th>Horas Real.</th>
+      <th>Responsável</th>
+      <th>Ações</th>
+    </tr>
+    {% for e in op.etapas %}
+      <tr style="background-color: #bbdefb;">
+        <td><strong>{{e.nome}}</strong></td>
+        <td><span class="badge" style="font-size: 14px !important;">{{e.status}}</span></td>
+        <td>{{e.percentual}}%</td>
+        <td>{{e.horas_planejadas}} h</td>
+        <td>{{e.horas_realizadas}} h</td>
+        <td>{{e.responsavel.nome if e.responsavel else "-"}}</td>
+        <td>
+          <form method="post" action="/etapas/{{e.id}}/atualizar" class="row" style="gap: 8px; align-items: center;">
+            <label style="font-size: 12px; font-weight: bold; margin: 0;">Progresso:</label>
+            <input name="percentual" type="number" min="0" max="100" value="{{e.percentual}}" style="width:70px; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" placeholder="%">
+            <span style="font-size: 12px; color: #666;">%</span>
+            <button type="submit" style="background-color: #007bff; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Atualizar</button>
+          </form>
+        </td>
+      </tr>
+      
+      <!-- Tarefas da Etapa -->
+      <tr style="background-color: #bbdefb;">
+        <td colspan="7">
+          <h4 style="color: #000; margin: 0; font-size: 14px; font-weight: bold;">Tarefas da Etapa: {{e.nome}}</h4>
+          
+          <!-- Formulário para adicionar tarefa -->
+          <div style="background-color: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #e0e0e0;">
+            <form method="POST" action="/tarefas/nova" style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1.2fr 1fr auto; gap: 8px; align-items: end;">
+              <input type="hidden" name="etapa_id" value="{{ e.id }}">
+              <div>
+                <label style="font-size: 11px; color: #666; font-weight: bold;">TAREFA</label>
+                <input name="titulo" placeholder="Nome da tarefa" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              </div>
+              <div>
+                <label style="font-size: 11px; color: #666; font-weight: bold;">RESPONSAVEL</label>
+                <select name="responsavel_id" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                  <option value="">-- Selecione --</option>
+                  {% for op in operadores %}
+                    <option value="{{ op.id }}">{{ op.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 11px; color: #666; font-weight: bold;">HORAS</label>
+                <input type="number" step="0.5" name="horas_previstas" placeholder="0.0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              </div>
+              <div>
+                <label style="font-size: 11px; color: #666; font-weight: bold;">INICIO</label>
+                <input type="date" name="data_inicio_prev" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              </div>
+              <div>
+                <label style="font-size: 11px; color: #666; font-weight: bold;">FIM</label>
+                <input type="date" name="data_fim_prev" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              </div>
+              <button type="submit" style="background-color: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">+ TAREFA</button>
+            </form>
+          </div>
+          
+          <!-- Tabela de Tarefas -->
+          {% if e.tarefas %}
+            <table style="margin-top: 10px; width: 100%; border-collapse: collapse;">
+              <tr style="background-color: #f0f0f0;">
+                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Tarefa</th>
+                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Responsavel</th>
+                <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Inicio</th>
+                <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Fim</th>
+                <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Horas</th>
+                <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Status</th>
+                <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Justificativa</th>
+                <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Acoes</th>
+              </tr>
+              {% for t in e.tarefas %}
+                <tr style="border: 1px solid #ddd;">
+                  <td style="padding: 10px; border: 1px solid #ddd;"><strong>{% if t.numero %}{{ t.numero }} - {% endif %}{{ t.titulo }}</strong></td>
+                  <td style="padding: 10px; border: 1px solid #ddd;">{{ t.responsavel.nome if t.responsavel else "-" }}</td>
+                  <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                    <form method="post" action="/tarefas/{{t.id}}/atualizar-data" style="display: inline; display: flex; gap: 5px; align-items: center;">
+                      <input type="date" name="data_inicio_prev" value="{% if t.data_inicio_prev %}{{ t.data_inicio_prev.strftime('%Y-%m-%d') }}{% endif %}" style="padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                      <button type="submit" style="background-color: #4CAF50; color: white; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✓</button>
+                    </form>
+                  </td>
+                  <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">{% if t.data_fim_prev %}{{ t.data_fim_prev.strftime('%d/%m/%Y') }}{% else %}-{% endif %}</td>
+                  <td style="padding: 10px; border: 1px solid #ddd; text-align: center;"><strong>{{ t.horas_previstas }} h</strong></td>
+                  <td style="padding: 10px; border: 1px solid #ddd; text-align: center;"><span class="badge" style="font-size: 14px !important;">{{ t.status_calculado }}</span></td>
+                  <td style="padding: 10px; border: 1px solid #ddd; text-align: left; font-size: 12px;">{{ t.justificativa_pausa if t.justificativa_pausa else '-' }}</td>
+                  <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                    <a href="/tarefas/{{t.id}}/imprimir" target="_blank" style="background-color: #2196F3; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 5px;">🖨️ Imprimir</a>
+                    {% if t.status_calculado == 'EM_EXECUCAO' %}
+                      <form method="post" action="/tarefas/{{t.id}}/pausar" style="display: inline;">
+                        <textarea name="justificativa" placeholder="Justificativa da pausa" style="width: 200px; height: 40px; padding: 5px; border: 1px solid #ddd; border-radius: 3px; margin: 5px 0; display: block;"></textarea>
+                        <button type="submit" style="background-color: #FF9800; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">⏸️ Pausar</button>
+                      </form>
+                      <form method="post" action="/tarefas/{{t.id}}/concluir" style="display: inline;">
+                        <button type="submit" style="background-color: #4CAF50; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">✓ Concluir</button>
+                      </form>
+                    {% elif t.status_calculado == 'PAUSADO' %}
+                      <form method="post" action="/tarefas/{{t.id}}/atualizar" style="display: inline;">
+                        <input type="hidden" name="acao" value="iniciar">
+                        <button type="submit" style="background-color: #2196F3; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">▶️ Retomar</button>
+                      </form>
+                      <form method="post" action="/tarefas/{{t.id}}/concluir" style="display: inline;">
+                        <button type="submit" style="background-color: #4CAF50; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">✓ Concluir</button>
+                      </form>
+                    {% elif t.status_calculado == 'PLANEJADO' %}
+                      <form method="post" action="/tarefas/{{t.id}}/atualizar" style="display: inline;">
+                        <input type="hidden" name="acao" value="iniciar">
+                        <button type="submit" style="background-color: #2196F3; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">▶️ Iniciar</button>
+                      </form>
+                    {% elif t.status_calculado == 'ATRASADA' %}
+                      <form method="post" action="/tarefas/{{t.id}}/atualizar" style="display: inline;">
+                        <input type="hidden" name="acao" value="iniciar">
+                        <button type="submit" style="background-color: #2196F3; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">▶️ Iniciar</button>
+                      </form>
+                      <form method="post" action="/tarefas/{{t.id}}/concluir" style="display: inline;">
+                        <button type="submit" style="background-color: #4CAF50; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px;">✓ Concluir</button>
+                      </form>
+                    {% endif %}
+                    <form method="post" action="/tarefas/{{t.id}}/excluir" style="display: inline;">
+                      <button type="submit" onclick="return confirm('Excluir tarefa?')" style="background-color: #f44336; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer;">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </table>
+          {% else %}
+            <p style="color: #999; margin-top: 10px;">Nenhuma tarefa cadastrada para esta etapa.</p>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

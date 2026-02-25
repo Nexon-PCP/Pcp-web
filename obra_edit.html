@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Editar Obra</h2>
+
+  <form method="post">
+    <div class="row">
+      <div>
+        <label>Código</label><br>
+        <input name="codigo" value="{{ obra.codigo }}" required>
+      </div>
+
+      <div style="min-width:320px">
+        <label>Nome</label><br>
+        <input name="nome" value="{{ obra.nome }}" required style="min-width:320px">
+      </div>
+
+      <div>
+        <label>Cliente</label><br>
+        <input name="cliente" value="{{ obra.cliente or '' }}">
+      </div>
+
+      <div>
+        <label>Status</label><br>
+        <select name="status">
+          <option value="ATIVA" {% if obra.status=='ATIVA' %}selected{% endif %}>ATIVA</option>
+          <option value="ENCERRADA" {% if obra.status=='ENCERRADA' %}selected{% endif %}>ENCERRADA</option>
+        </select>
+      </div>
+    </div>
+
+    <br>
+
+    <div class="row">
+      <div>
+        <label>Início</label><br>
+        <input type="date" name="data_inicio" value="{{ obra.data_inicio.isoformat() if obra.data_inicio else '' }}">
+      </div>
+
+      <div>
+        <label>Prev. Fim</label><br>
+        <input type="date" name="prev_fim" value="{{ obra.prev_fim.isoformat() if obra.prev_fim else '' }}">
+      </div>
+
+      <div>
+        <label>Fim Real</label><br>
+        <input type="date" name="fim_real" value="{{ obra.fim_real.isoformat() if obra.fim_real else '' }}">
+      </div>
+    </div>
+
+    <br>
+
+    <div class="card">
+      <h3 style="margin-top:0">Produtos da Obra (com quantidade)</h3>
+
+      {% for p in produtos %}
+        <div class="row" style="align-items:center;gap:12px;margin:6px 0">
+          <label style="min-width:260px">
+            <input type="checkbox" name="produtos_ids" value="{{ p.id }}"
+                   {% if selecionados.get(p.id|string) %}checked{% endif %}>
+            {{ p.nome }}
+          </label>
+
+          <div>
+            <label>Qtd</label><br>
+            <input type="number" min="1" style="width:110px"
+                   name="qtd_{{ p.id }}"
+                   value="{{ selecionados.get(p.id|string, 1) }}">
+          </div>
+        </div>
+      {% endfor %}
+
+      <p class="muted">Marque os produtos e informe a quantidade.</p>
+    </div>
+
+    <div class="row" style="justify-content:flex-end;gap:10px">
+      <a href="{{ url_for('listar_obras') }}"><button type="button">Voltar</button></a>
+      <button type="submit">Salvar</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

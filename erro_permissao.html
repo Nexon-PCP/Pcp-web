@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Negado - PCP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #e74c3c;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        
+        .mensagem {
+            color: #555;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .detalhes {
+            background: #f8f9fa;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: left;
+            border-radius: 5px;
+        }
+        
+        .detalhes p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .detalhes strong {
+            color: #333;
+        }
+        
+        .botoes {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-voltar {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-voltar:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-logout {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-logout:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(149, 165, 166, 0.3);
+        }
+        
+        .info-usuario {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .info-usuario p {
+            color: #555;
+            margin: 5px 0;
+        }
+        
+        .tipo-usuario {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔒</div>
+        
+        <h1>Acesso Negado</h1>
+        
+        <div class="mensagem">
+            <p>Desculpe, você não tem permissão para acessar este recurso.</p>
+        </div>
+        
+        <div class="info-usuario">
+            <p><strong>Usuário:</strong> {{ session.get('usuario_nome', 'Desconhecido') }}</p>
+            <p><strong>Email:</strong> {{ session.get('usuario_email', 'N/A') }}</p>
+            <div class="tipo-usuario">{{ session.get('usuario_tipo', 'N/A') }}</div>
+        </div>
+        
+        <div class="detalhes">
+            <p><strong>⚠️ Motivo da Restrição:</strong></p>
+            <p>{{ mensagem }}</p>
+        </div>
+        
+        <div class="botoes">
+            <a href="javascript:history.back()" class="btn btn-voltar">← Voltar</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-logout">Sair</a>
+        </div>
+    </div>
+</body>
+</html>
