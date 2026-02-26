@@ -3,8 +3,12 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 import calendar
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, 
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
+    static_folder=os.path.join(os.path.dirname(__file__), 'static')
+)
 
 ETAPAS_FIXAS = ["CORTE", "DOBRA", "PINTURA", "CALDEIRARIA", "MONTAGEM", "START UP"]
 
@@ -370,6 +374,30 @@ class Tarefa(db.Model):
     
     etapa = db.relationship("Etapa", backref=db.backref("tarefas", lazy=True, cascade="all,delete"))
     responsavel = db.relationship("Operador", backref=db.backref("tarefas", lazy=True))
+    
+    @property
+    def status_calculado(self):
+        """Retorna o status calculado baseado na data de fim"""
+        # Se a tarefa foi concluída, mantém o status CONCLUIDO
+        if self.status == "CONCLUIDO":
+            return "CONCLUIDO"
+        
+        # Se a tarefa está em execução, mantém o status EM_EXECUCAO
+        if self.status == "EM_EXECUCAO":
+            return "EM_EXECUCAO"
+        
+        # Se a tarefa está pausada, mantém o status PAUSADO
+        if self.status == "PAUSADO":
+            return "PAUSADO"
+        
+        # Se tem data de fim prevista, verifica se está atrasada
+        if self.data_fim_prev:
+            from datetime import date
+            if date.today() > self.data_fim_prev:
+                return "ATRASADA"
+        
+        # Caso contrário, retorna PLANEJADO
+        return "PLANEJADO"
     
     @property
     def percentual(self):
