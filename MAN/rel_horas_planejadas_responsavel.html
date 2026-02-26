@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% block top_title %}Horas Planejadas por Responsável{% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #667eea;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .responsavel-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .responsavel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .responsavel-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .responsavel-total {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .responsavel-content {
+    padding: 20px;
+  }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+
+  .op-badge {
+    display: inline-block;
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .tipo-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .tipo-etapa {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .tipo-tarefa {
+    background: #dbeafe;
+    color: #0c4a6e;
+  }
+
+  .horas-cell {
+    text-align: center;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  .print-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 25px;
+    transition: all 0.3s ease;
+  }
+
+  .print-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  @media print {
+    .print-btn {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .rel-header {
+      padding: 20px;
+    }
+
+    .rel-header h1 {
+      font-size: 22px;
+    }
+
+    .summary-cards {
+      grid-template-columns: 1fr;
+    }
+
+    .responsavel-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    table {
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 8px;
+    }
+  }
+</style>
+
+<!-- Header -->
+<div class="rel-header">
+  <h1>👷 Horas Planejadas por Responsável</h1>
+  <p>Total de horas planejadas alocadas para cada responsável</p>
+</div>
+
+<!-- Botão de Impressão -->
+<button class="print-btn" onclick="window.print()">🖨️ Imprimir Relatório</button>
+
+<!-- Resumo Geral -->
+<div class="summary-cards">
+  <div class="summary-card">
+    <div class="summary-label">📊 Total Geral de Horas</div>
+    <div class="summary-value">{{ total_geral }} h</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">👷 Total de Responsáveis</div>
+    <div class="summary-value">{{ relatorio|length }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">📈 Média por Responsável</div>
+    <div class="summary-value">
+      {% if relatorio|length > 0 %}
+        {{ "%.1f"|format(total_geral / relatorio|length) }}
+      {% else %}
+        0
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Relatório por Responsável -->
+{% if relatorio %}
+  {% for resp_item in relatorio %}
+    <div class="responsavel-card">
+      <div class="responsavel-header">
+        <h2>👤 {{ resp_item.operador.nome }}</h2>
+        <div class="responsavel-total">
+          Total: <strong>{{ resp_item.total_horas }} h</strong>
+        </div>
+      </div>
+
+      <div class="responsavel-content">
+        <!-- ETAPAS -->
+        {% if resp_item.etapas %}
+          <div class="section-title">📋 Etapas Alocadas ({{ resp_item.etapas|length }})</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>OP</th>
+                  <th>Etapa</th>
+                  <th>Horas Planejadas</th>
+                  <th>Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for etapa in resp_item.etapas %}
+                  <tr>
+                    <td><span class="op-badge">{{ etapa.op_numero }}</span></td>
+                    <td><strong>{{ etapa.etapa_nome }}</strong></td>
+                    <td class="horas-cell">{{ etapa.horas_planejadas }} h</td>
+                    <td><span class="tipo-badge tipo-etapa">{{ etapa.tipo }}</span></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        <!-- TAREFAS -->
+        {% if resp_item.tarefas %}
+          <div class="section-title">✅ Tarefas Alocadas ({{ resp_item.tarefas|length }})</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>OP</th>
+                  <th>Etapa</th>
+                  <th>Tarefa</th>
+                  <th>Horas Planejadas</th>
+                  <th>Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for tarefa in resp_item.tarefas %}
+                  <tr>
+                    <td><span class="op-badge">{{ tarefa.op_numero }}</span></td>
+                    <td>{{ tarefa.etapa_nome }}</td>
+                    <td><strong>{{ tarefa.tarefa_nome }}</strong></td>
+                    <td class="horas-cell">{{ tarefa.horas_planejadas }} h</td>
+                    <td><span class="tipo-badge tipo-tarefa">{{ tarefa.tipo }}</span></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <p>Nenhum responsável com horas planejadas.</p>
+    <p style="font-size: 12px; margin-top: 10px;">Atribua responsáveis às etapas ou tarefas para gerar o relatório.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Nova OP</h2>
+  <form method="post" class="row">
+    
+    <label>Número OP</label><br>
+    <input name="numero" placeholder="Número OP (ex: OP-1001)" required>
+    
+    <br><br>
+    
+    <label>Obra</label><br>
+    <select id="obra_id" name="obra_id" required>
+      <option value="">-- selecione --</option>
+      {% for o in obras %}
+        <option value="{{ o.id }}">{{ o.codigo }} - {{ o.nome }}</option>
+      {% endfor %}
+    </select>
+
+    <br><br>
+
+    <label>Produto</label><br>
+    <select id="produto" name="produto" required>
+      <option value="">-- selecione a obra primeiro --</option>
+    </select>
+
+    <br><br>
+
+    <label>Quantidade</label><br>
+    <input name="quantidade" type="number" min="1" value="1" required>
+
+    <br><br>
+
+    <label>Previsão de Início</label><br>
+    <input name="prev_inicio" type="date">
+
+    <br><br>
+
+    <label>Previsão de Término</label><br>
+    <input name="prev_fim" type="date">
+
+    <br><br>
+
+    <button type="submit">Criar OP</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("obra_id").addEventListener("change", async function(){
+  const obraId = this.value;
+  const sel = document.getElementById("produto");
+  sel.innerHTML = '<option value="">Carregando...</option>';
+
+  if(!obraId){
+    sel.innerHTML = '<option value="">-- selecione a obra primeiro --</option>';
+    return;
+  }
+
+  const resp = await fetch(`/api/obra/${obraId}/produtos`);
+  const data = await resp.json();
+
+  sel.innerHTML = '<option value="">-- selecione --</option>';
+  (data.produtos || []).forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.nome;
+    opt.textContent = p.nome;
+    sel.appendChild(opt);
+  });
+
+  if((data.produtos || []).length === 0){
+    sel.innerHTML = '<option value="">(Sem produtos cadastrados nessa obra)</option>';
+  }
+});
+</script>
+{% endblock %}

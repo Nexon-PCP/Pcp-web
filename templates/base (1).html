@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nexon Sistemas</title>
+  <style>
+    :root{
+  --bg:#0a0f1a;
+  --panel:#0f172a;
+  --panel2:#0b1220;
+  --stroke:#22324a;
+
+  --txt:#f1f5f9;
+  --muted:#a9b3c3;
+
+  --brand:#0b5fff;     /* azul "sistema" */
+  --brand2:#1e88ff;
+  --ok:#16a34a;
+  --warn:#f59e0b;
+  --bad:#dc2626;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+}
+a{color:inherit;text-decoration:none}
+
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.side{
+  background: linear-gradient(180deg, #0b1220 0%, #0a1020 40%, #070c14 100%);
+  border-right: 1px solid var(--stroke);
+  padding:16px;
+  position:sticky;top:0;height:100vh
+}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.dot{
+  width:10px;height:10px;border-radius:999px;
+  background: var(--brand);
+  box-shadow: 0 0 18px rgba(11,95,255,.55);
+}
+.brand h1{font-size:13px;margin:0;font-weight:700;letter-spacing:.5px;font-family:'Segoe UI', 'Roboto', sans-serif;color:#fff}
+
+.nav{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 12px;border-radius:10px;
+  border:1px solid rgba(255,255,255,0.06);
+  color: var(--muted);
+  background: rgba(255,255,255,0.03);
+}
+.nav a:hover{
+  color: var(--txt);
+  border-color: rgba(11,95,255,.35);
+  background: rgba(11,95,255,.10);
+}
+.nav .ico{width:18px;text-align:center;opacity:.95}
+
+/* TOP BAR */
+.main{display:flex;flex-direction:column}
+.top{
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;
+  background: rgba(15,23,42,.92);
+  border-bottom: 1px solid var(--stroke);
+  position:sticky;top:0;z-index:10
+}
+.top .title{font-weight:800}
+
+/* CONTENT */
+.wrap{padding:18px;max-width:1200px}
+.card{
+  background: rgba(15,23,42,.92);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:14px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.38);
+}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left}
+th{color:var(--muted);font-weight:800}
+
+/* FORM */
+input,select,button{
+  padding:10px 12px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.10);
+  background: #0b1220;
+  color: var(--txt);
+  outline:none;
+}
+input:focus,select:focus{
+  border-color: rgba(11,95,255,.60);
+  box-shadow: 0 0 0 3px rgba(11,95,255,.18);
+}
+
+/* BUTTONS */
+button{cursor:pointer}
+button.primary{
+  background: linear-gradient(180deg, var(--brand2), var(--brand));
+  border-color: rgba(11,95,255,.75);
+  color:#fff;
+  font-weight:800;
+}
+button.primary:hover{
+  filter: brightness(1.05);
+}
+
+/* BADGES */
+.badge{
+  padding:5px 10px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  color: var(--txt);
+  background: rgba(255,255,255,.04);
+  font-weight:700;
+}
+.b-ok{border-color:rgba(22,163,74,.55);background:rgba(22,163,74,.12)}
+.b-warn{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.12)}
+.b-bad{border-color:rgba(220,38,38,.55);background:rgba(220,38,38,.12)}
+
+/* KPI */
+.kpi{display:grid;grid-template-columns:repeat(4, minmax(160px,1fr));gap:10px}
+.kpi .box{
+  padding:12px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,0.03);
+}
+.kpi .n{font-size:22px;font-weight:900;margin-top:6px}
+.muted{color:var(--muted)}
+
+@media (max-width: 980px){
+  .app{grid-template-columns:1fr}
+  .side{height:auto;position:relative}
+}
+
+  </style>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='sistema.css') }}?v=999">
+
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="dot"></div>
+        <h1>NEXON SISTEMAS</h1>
+      </div>
+      <img src="{{ url_for('static', filename='logo-ntc.png') }}?v=2" alt="NTC" style="height: 28px; width: auto; margin-left: 0;">
+    </div>
+
+    <div class="nav">
+      <a href="/dashboard"><span class="ico">📊</span> Dashboard</a>
+      <a href="/obras"><span class="ico">🏗️</span> Obras</a>
+      <a href="{{ url_for('cronograma') }}">Cronograma (Gantt)</a>
+      <a href="/ops"><span class="ico">🧾</span> Ordens de Produção</a>
+      <a href="/apontamentos"><span class="ico">📝</span> Apontamentos</a>
+      <a href="/cadastros"><span class="ico">👷</span> Cadastros</a>
+      <a href="/relatorios"><span class="ico">📄</span> Relatórios</a>
+    </div>
+
+    <div style="margin-top:16px" class="muted">
+      <div style="font-size:12px;opacity:.85">Servidor</div>
+      <div style="font-size:13px;margin-top:4px">127.0.0.1:5000</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div class="title">{% block top_title %}Nexon Sistemas{% endblock %}</div>
+      <div class="muted" style="font-size:13px">{% block top_right %}Produção{% endblock %}</div>
+    </div>
+
+    <div class="wrap">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+</body>
+</html>

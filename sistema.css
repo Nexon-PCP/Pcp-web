@@ -90,8 +90,7 @@ html, body{
 }
 
 .wrap{
-  max-width:none !important;
-  width:100% !important;
+  max-width:1250px !important;
 }
 
 /* ===== CARDS / PAINÉIS ===== */
@@ -325,12 +324,6 @@ button.primary, .btn-primary{
 #tela-tarefas table td:nth-child(4) {
   background-color: #0a1f3d !important;
   color: #ffd700 !important;
-}
-
-/* Altura das linhas de Tarefas em apresentação */
-#tela-tarefas table tbody tr td {
-  height: 40px !important;
-  min-height: 40px !important;
   font-size: 25px !important;
   font-weight: bold !important;
 }
@@ -357,22 +350,18 @@ button.primary, .btn-primary{
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 */
 
-/* ===== MOBILE E TABLET (< 1025px) ===== */
-@media (max-width: 1024px) {
+/* ===== MOBILE (< 768px) ===== */
+@media (max-width: 767px) {
   
   /* Base - aumentar font para facilitar leitura */
   html, body {
     font-size: 14px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
   }
 
   /* Layout - remover sidebar fixa, transformar em menu hambúrguer */
   .app {
     display: flex !important;
     flex-direction: column !important;
-    grid-template-columns: none !important;
   }
 
   .side {
@@ -433,15 +422,11 @@ button.primary, .btn-primary{
   .main {
     width: 100% !important;
     padding: 15px !important;
-    min-height: 100vh !important;
-    overflow-y: auto !important;
   }
 
   .wrap {
     max-width: 100% !important;
-    width: 100% !important;
     padding: 0 !important;
-    margin: 0 !important;
   }
 
   /* Cards - ajustar padding */
@@ -519,24 +504,6 @@ button.primary, .btn-primary{
   form .col {
     width: 100% !important;
     margin-bottom: 15px !important;
-  }
-
-  /* Forçar todos os elementos de formulário a ocuparem 100% */
-  form input,
-  form select,
-  form textarea,
-  form .form-group,
-  form .form-control,
-  form label {
-    width: 100% !important;
-    max-width: 100% !important;
-    display: block !important;
-    margin-bottom: 10px !important;
-  }
-
-  /* Remover float e inline de elementos de formulário */
-  form * {
-    float: none !important;
   }
 
   /* Filtros - empilhar */
@@ -626,24 +593,6 @@ button.primary, .btn-primary{
   .menu-toggle {
     display: none !important; /* esconder botão hambúrguer */
   }
-
-  /* Remover padding do top bar (espaço do botão hambúrguer) */
-  .top {
-    padding-left: 18px !important;
-    padding-right: 18px !important;
-  }
-
-  /* Restaurar layout grid original */
-  .app {
-    display: grid !important;
-    grid-template-columns: 260px 1fr !important;
-  }
-
-  /* Sidebar volta a ser fixa */
-  .side {
-    position: sticky !important;
-    left: 0 !important;
-  }
 }
 
 /* ===== UTILITÁRIOS RESPONSIVOS ===== */
@@ -704,18 +653,4 @@ button.primary, .btn-primary{
   textarea {
     font-size: 16px !important;
   }
-}
-
-
-/* Remover espaçamento entre linhas de Status na primeira página (Dashboard) */
-#tela-dashboard table {
-  border-collapse: collapse !important;
-  border-spacing: 0 !important;
-  margin: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-#tela-dashboard table tbody tr td {
-  padding: 0 !important;
-  margin: 0 !important;
 }

@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+{% block top_title %}Relatório de Horas por Operador (Detalhado){% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .filtros-container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .filtros-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+
+  .filtro-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .filtro-group input,
+  .filtro-group select {
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .filtro-group input:focus,
+  .filtro-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .filtros-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-filtrar {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .btn-filtrar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .btn-limpar {
+    padding: 10px 20px;
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .btn-limpar:hover {
+    background: #e5e7eb;
+  }
+
+  .summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #667eea;
+    margin-bottom: 25px;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .operador-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .operador-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .operador-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .operador-total {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .operador-content {
+    padding: 20px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: #f3f4f6;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+
+  .op-badge {
+    display: inline-block;
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .status-planejado {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .status-em-execucao {
+    background: #fed7aa;
+    color: #92400e;
+  }
+
+  .status-concluido {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .horas-cell {
+    text-align: center;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .print-btn {
+    display: inline-block;
+    padding: 8px 14px;
+    background: #f3f4f6;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: all 0.3s ease;
+  }
+
+  .print-btn:hover {
+    background: #e5e7eb;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  @media print {
+    .filtros-container, .print-btn, .btn-filtrar, .btn-limpar {
+      display: none;
+    }
+    
+    .operador-card {
+      page-break-inside: avoid;
+      margin-bottom: 15px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .rel-header {
+      padding: 20px;
+    }
+
+    .rel-header h1 {
+      font-size: 22px;
+    }
+
+    .operador-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .filtros-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .filtros-buttons {
+      flex-direction: column;
+    }
+
+    .btn-filtrar, .btn-limpar {
+      width: 100%;
+    }
+
+    table {
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 8px;
+    }
+  }
+</style>
+
+<!-- Header -->
+<div class="rel-header">
+  <h1>👤 Horas por Operador (Detalhado)</h1>
+  <p>Visualize as horas de cada operador com data, obra e produto</p>
+</div>
+
+<!-- Filtros -->
+<div class="filtros-container">
+  <div class="filtros-title">🔍 Filtros</div>
+  
+  <form method="GET" action="/relatorios/horas-operador-detalhado">
+    <div class="filtros-grid">
+      <div class="filtro-group">
+        <label for="data_inicio">Data Início</label>
+        <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio_str }}">
+      </div>
+      
+      <div class="filtro-group">
+        <label for="data_fim">Data Fim</label>
+        <input type="date" id="data_fim" name="data_fim" value="{{ data_fim_str }}">
+      </div>
+      
+      <div class="filtro-group">
+        <label for="operador_id">Operador</label>
+        <select id="operador_id" name="operador_id">
+          <option value="">Todos os Operadores</option>
+          {% for op in operadores %}
+            <option value="{{ op.id }}" {% if operador_id_str == op.id|string %}selected{% endif %}>
+              {{ op.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    
+    <div class="filtros-buttons">
+      <button type="submit" class="btn-filtrar">🔍 Filtrar</button>
+      <a href="/relatorios/horas-operador-detalhado" class="btn-limpar" style="text-decoration: none; display: inline-block;">🔄 Limpar Filtros</a>
+      <button type="button" class="btn-filtrar" onclick="window.print()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">🖨️ Imprimir Tudo</button>
+    </div>
+  </form>
+</div>
+
+<!-- Resumo Geral -->
+<div class="summary-card">
+  <div class="summary-label">📊 Total de Horas</div>
+  <div class="summary-value">{{ "%.1f"|format(total_geral_horas) }} h</div>
+</div>
+
+<!-- Relatório por Operador -->
+{% if relatorio %}
+  {% for op_item in relatorio %}
+    <div class="operador-card">
+      <div class="operador-header">
+        <h2>👤 {{ op_item.operador }}</h2>
+        <div class="operador-total">
+          Total: <strong>{{ "%.1f"|format(op_item.total_horas) }} h</strong> ({{ op_item.total_tarefas }} tarefa(s))
+        </div>
+      </div>
+
+      <div class="operador-content">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarefa</th>
+                <th>Obra</th>
+                <th>Produto</th>
+                <th>OP</th>
+                <th>Etapa</th>
+                <th>Início</th>
+                <th>Fim</th>
+                <th>Horas</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tarefa in op_item.tarefas %}
+                <tr>
+                  <td><strong>{{ tarefa.tarefa }}</strong></td>
+                  <td>
+                    <div>{{ tarefa.obra }}</div>
+                    <small style="color: #999;">{{ tarefa.obra_codigo }}</small>
+                  </td>
+                  <td>{{ tarefa.produto }}</td>
+                  <td><span class="op-badge">{{ tarefa.op_numero }}</span></td>
+                  <td><strong>{{ tarefa.etapa }}</strong></td>
+                  <td>{{ tarefa.data_inicio }}</td>
+                  <td>{{ tarefa.data_fim }}</td>
+                  <td class="horas-cell">{{ tarefa.horas }} h</td>
+                  <td>
+                    <span class="status-badge status-{{ tarefa.status|lower|replace('_', '-') }}">
+                      {{ tarefa.status }}
+                    </span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <p>Nenhum operador com tarefas no período selecionado.</p>
+    <p style="font-size: 12px; margin-top: 10px;">Tente ajustar os filtros ou atribua operadores como responsáveis às tarefas.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

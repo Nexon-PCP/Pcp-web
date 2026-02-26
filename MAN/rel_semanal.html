@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block top_title %}Relatório Semanal de Alocação{% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .filters-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .filters-card h3 {
+    margin: 0 0 15px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .filter-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: flex-end;
+  }
+
+  .filter-group select,
+  .filter-group input {
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    color: #1f2937;
+  }
+
+  .filter-group button {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .filter-group button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .filter-group a button {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .filter-group a button:hover {
+    background: #d1d5db;
+  }
+
+  .responsavel-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .responsavel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+  }
+
+  .responsavel-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .responsavel-content {
+    padding: 20px;
+  }
+
+  .summary-badges {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .badge-item {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+  }
+
+  .badge-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .badge-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .status-ok {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .status-warning {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-danger {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .diferenca-positive {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .diferenca-negative {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .percentual-high {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .percentual-medium {
+    color: #f59e0b;
+    font-weight: 600;
+  }
+
+  .percentual-low {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .btn-secondary:hover {
+    background: #d1d5db;
+  }
+
+  @media (max-width: 768px) {
+    .rel-header {
+      padding: 20px;
+    }
+
+    .rel-header h1 {
+      font-size: 22px;
+    }
+
+    .filter-group {
+      grid-template-columns: 1fr;
+    }
+
+    .summary-badges {
+      grid-template-columns: 1fr;
+    }
+
+    .button-group {
+      flex-direction: column;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+  }
+</style>
+
+<!-- Header -->
+<div class="rel-header">
+  <h1>📊 Relatório Semanal de Alocação de Horas</h1>
+  <p>Acompanhamento de horas planejadas e realizadas por semana para cada responsável</p>
+</div>
+
+<!-- Filtros -->
+<div class="filters-card">
+  <h3>🔍 Filtros</h3>
+  <form method="GET" class="filter-group">
+    <select name="responsavel_id">
+      <option value="">-- Todos os Responsáveis --</option>
+      {% for op in todos_operadores %}
+        <option value="{{ op.id }}" {% if responsavel_id == op.id %}selected{% endif %}>
+          {{ op.nome }}
+        </option>
+      {% endfor %}
+    </select>
+    
+    <input type="date" name="data_inicio" value="{{ data_inicio }}" placeholder="Data Início">
+    <input type="date" name="data_fim" value="{{ data_fim }}" placeholder="Data Fim">
+    
+    <button type="submit">🔍 Filtrar</button>
+    <a href="/relatorios/semanal"><button type="button">🔄 Limpar Filtros</button></a>
+  </form>
+</div>
+
+<!-- Relatório -->
+{% if relatorio %}
+  {% for item in relatorio %}
+    <div class="responsavel-card">
+      <div class="responsavel-header">
+        <h2>👤 {{ item.operador.nome }}</h2>
+      </div>
+
+      <div class="responsavel-content">
+        <!-- Resumo Geral -->
+        <div class="summary-badges">
+          <div class="badge-item">
+            <div class="badge-label">📋 Total Planejado</div>
+            <div class="badge-value">{{ item.total_planejado }} h</div>
+          </div>
+          <div class="badge-item">
+            <div class="badge-label">✅ Total Realizado</div>
+            <div class="badge-value">{{ item.total_realizado }} h</div>
+          </div>
+          <div class="badge-item">
+            <div class="badge-label">📊 Diferença</div>
+            <div class="badge-value">
+              {% if item.total_diferenca > 0 %}
+                <span class="diferenca-positive">+{{ item.total_diferenca }} h</span>
+              {% elif item.total_diferenca < 0 %}
+                <span class="diferenca-negative">{{ item.total_diferenca }} h</span>
+              {% else %}
+                <span>0 h</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="badge-item">
+            <div class="badge-label">📈 % Utilização</div>
+            <div class="badge-value">
+              {% if item.total_percentual >= 100 %}
+                <span class="percentual-high">{{ "%.1f"|format(item.total_percentual) }}%</span>
+              {% elif item.total_percentual >= 80 %}
+                <span class="percentual-medium">{{ "%.1f"|format(item.total_percentual) }}%</span>
+              {% else %}
+                <span class="percentual-low">{{ "%.1f"|format(item.total_percentual) }}%</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela Semanal -->
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Semana</th>
+                <th>Período</th>
+                <th>Horas Planejadas</th>
+                <th>Horas Realizadas</th>
+                <th>Diferença</th>
+                <th>% Utilização</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for semana in item.dados_semanas %}
+                <tr>
+                  <td><strong>Semana de {{ semana.semana_inicio.strftime("%d/%m") }} a {{ semana.semana_fim.strftime("%d/%m/%Y") }}</strong></td>
+                  <td>{{ semana.semana_inicio.strftime("%A") }} a {{ semana.semana_fim.strftime("%A") }}</td>
+                  <td class="horas-cell">{{ semana.horas_planejadas }} h</td>
+                  <td class="horas-cell">{{ semana.horas_realizadas }} h</td>
+                  <td>
+                    {% if semana.diferenca > 0 %}
+                      <span class="diferenca-positive">+{{ semana.diferenca }} h</span>
+                    {% elif semana.diferenca < 0 %}
+                      <span class="diferenca-negative">{{ semana.diferenca }} h</span>
+                    {% else %}
+                      <span>0 h</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if semana.horas_planejadas > 0 %}
+                      {% if semana.percentual >= 100 %}
+                        <span class="percentual-high">{{ "%.1f"|format(semana.percentual) }}%</span>
+                      {% elif semana.percentual >= 80 %}
+                        <span class="percentual-medium">{{ "%.1f"|format(semana.percentual) }}%</span>
+                      {% else %}
+                        <span class="percentual-low">{{ "%.1f"|format(semana.percentual) }}%</span>
+                      {% endif %}
+                    {% else %}
+                      <span>-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if semana.horas_planejadas > 0 %}
+                      {% if semana.percentual >= 100 %}
+                        <span class="status-badge status-danger">Sobrecarregado</span>
+                      {% elif semana.percentual >= 80 %}
+                        <span class="status-badge status-warning">Próximo do Limite</span>
+                      {% else %}
+                        <span class="status-badge status-ok">Dentro do Planejado</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="status-badge">Sem Planejamento</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <p>Nenhum dado disponível para o período selecionado.</p>
+    <p style="font-size: 12px; margin-top: 10px;">Ajuste os filtros ou crie apontamentos para gerar o relatório.</p>
+  </div>
+{% endif %}
+
+<!-- Botões de Ação -->
+<div class="button-group">
+  <a href="/relatorios" class="btn btn-secondary">← Voltar aos Relatórios</a>
+</div>
+
+{% endblock %}

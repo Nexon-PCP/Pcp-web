@@ -1,0 +1,26 @@
+<h2>Relatório de Tarefas</h2>
+
+<p>Total Horas Previstas: {{ total_prev }}</p>
+<p>Total Horas Realizadas: {{ total_real }}</p>
+
+<table>
+<tr>
+<th>OP</th>
+<th>Etapa</th>
+<th>Tarefa</th>
+<th>Responsável</th>
+<th>Prev</th>
+<th>Real</th>
+</tr>
+
+{% for t in tarefas %}
+<tr>
+<td>{{ t.etapa.op.numero }}</td>
+<td>{{ t.etapa.nome }}</td>
+<td>{{ t.titulo }}</td>
+<td>{{ t.responsavel.nome if t.responsavel else "-" }}</td>
+<td>{{ t.horas_previstas }}</td>
+<td>{{ t.horas_realizadas }}</td>
+</tr>
+{% endfor %}
+</table>

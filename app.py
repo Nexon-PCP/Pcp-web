@@ -3,31 +3,12 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 import calendar
-import os
 
 app = Flask(__name__)
 
 ETAPAS_FIXAS = ["CORTE", "DOBRA", "PINTURA", "CALDEIRARIA", "MONTAGEM", "START UP"]
 
-# ============================================================
-# CONFIGURAÇÃO DE BANCO DE DADOS
-# ============================================================
-# Usar DATABASE_URL do Railway em produção, SQLite em desenvolvimento
-DATABASE_URL = os.environ.get('DATABASE_URL')
-
-if DATABASE_URL:
-    # Produção: PostgreSQL no Railway
-    # Converter postgresql:// para postgresql+psycopg2://
-    if DATABASE_URL.startswith('postgresql://'):
-        DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg2://', 1)
-    
-    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
-    print("[DB] Usando PostgreSQL (Railway)")
-else:
-    # Desenvolvimento: SQLite local
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pcp.db"
-    print("[DB] Usando SQLite (Local)")
-
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pcp.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "pcp-secret"
 app.config["SESSION_COOKIE_SECURE"] = False  # False para desenvolvimento local
@@ -149,37 +130,6 @@ class Obra(db.Model):
         backref="obra",
         cascade="all, delete-orphan"
     )
-    
-    @property
-    def percentual_calc(self):
-        """Calcula o percentual total da obra baseado nas OPs"""
-        if not self.ops:
-            return 0.0
-        
-        total_ops = len(self.ops)
-        if total_ops == 0:
-            return 0.0
-        
-        # Somar percentuais calculados de todas as OPs (nao o valor armazenado)
-        soma_percentuais = sum(op.percentual_calc for op in self.ops)
-        percentual_medio = soma_percentuais / total_ops
-        return round(percentual_medio, 2)
-    
-    @property
-    def status_calculado(self):
-        """Retorna o status calculado baseado no percentual"""
-        percentual = self.percentual_calc
-        
-        # Se 100% concluido
-        if percentual >= 100:
-            return "CONCLUIDA"
-        
-        # Se em execucao (entre 0% e 100%)
-        if percentual > 0:
-            return "EM_EXECUCAO"
-        
-        # Se nao iniciado
-        return "ABERTA"
 
 
 class Usuario(db.Model):
@@ -1452,22 +1402,6 @@ def tarefa_atualizar(tarefa_id):
         if tarefas_concluidas == total_tarefas and total_tarefas > 0:
             op.status = "CONCLUIDA"
     
-    # Apos qualquer edicao (concluir, pausar, etc), verificar se ainda ha tarefas EM_EXECUCAO
-    # Se nao houver, voltar status da obra para ABERTA
-    if acao in ["concluir", "pausar"]:
-        op = tarefa.etapa.op
-        obra = op.obra
-        
-        # Contar tarefas EM_EXECUCAO na obra
-        tarefas_em_execucao = Tarefa.query.join(Etapa).join(OP).filter(
-            OP.obra_id == obra.id,
-            Tarefa.status == "EM_EXECUCAO"
-        ).count()
-        
-        # Se nao houver tarefas EM_EXECUCAO, voltar status da obra para ABERTA
-        if tarefas_em_execucao == 0 and obra.status == "EM_EXECUCAO":
-            obra.status = "ABERTA"
-    
     db.session.commit()
     return redirect(url_for("detalhe_op", op_id=tarefa.etapa.op_id))
 
@@ -1486,20 +1420,6 @@ def tarefa_pausar(tarefa_id):
     justificativa = request.form.get("justificativa", "")
     tarefa.status = "PAUSADO"
     tarefa.justificativa_pausa = justificativa
-    db.session.flush()
-    
-    # Verificar se ainda ha tarefas EM_EXECUCAO na obra
-    op = tarefa.etapa.op
-    obra = op.obra
-    
-    tarefas_em_execucao = Tarefa.query.join(Etapa).join(OP).filter(
-        OP.obra_id == obra.id,
-        Tarefa.status == "EM_EXECUCAO"
-    ).count()
-    
-    # Se nao houver tarefas EM_EXECUCAO, voltar status da obra para ABERTA
-    if tarefas_em_execucao == 0 and obra.status == "EM_EXECUCAO":
-        obra.status = "ABERTA"
     
     db.session.commit()
     return redirect(url_for("detalhe_op", op_id=tarefa.etapa.op_id))
@@ -1554,22 +1474,7 @@ def tarefa_excluir(tarefa_id):
         if usuario and not usuario.tem_permissao("deletar_tarefa", tarefa.etapa.nome):
             return render_template('erro_permissao.html', mensagem=f"Você não tem permissão para deletar tarefas na etapa {tarefa.etapa.nome}"), 403
     op_id = tarefa.etapa.op_id
-    op = tarefa.etapa.op
-    obra = op.obra
-    
     db.session.delete(tarefa)
-    db.session.flush()
-    
-    # Verificar se ainda ha tarefas EM_EXECUCAO na obra
-    tarefas_em_execucao = Tarefa.query.join(Etapa).join(OP).filter(
-        OP.obra_id == obra.id,
-        Tarefa.status == "EM_EXECUCAO"
-    ).count()
-    
-    # Se nao houver tarefas EM_EXECUCAO, voltar status da obra para ABERTA
-    if tarefas_em_execucao == 0 and obra.status == "EM_EXECUCAO":
-        obra.status = "ABERTA"
-    
     db.session.commit()
     return redirect(url_for("detalhe_op", op_id=op_id))
 
@@ -2643,24 +2548,6 @@ def imprimir_tarefa(tarefa_id):
 
 # ------------ START ----------------
 
-@app.route("/test-db")
-def test_db():
-    """Rota de teste para verificar conexão com banco de dados"""
-    try:
-        usuarios = Usuario.query.count()
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected',
-            'total_usuarios': usuarios
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'database': 'disconnected',
-            'error': str(e)
-        }), 500
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Página de login"""
@@ -2953,7 +2840,7 @@ def apresentacao():
             'codigo': obra.codigo or 'N/A',
             'nome': obra.nome or 'Sem nome',
             'cliente': obra.cliente or 'N/A',
-            'status': (lambda: obra.status_calculado if obra.status_calculado else 'ABERTA')() if hasattr(obra, 'status_calculado') else 'ABERTA',
+            'status': obra.status or 'N/A',
             'percentual': round(percentual_obra),
             'corte_dobra_inicio': obra.corte_dobra_inicio.strftime('%d/%m/%Y') if obra.corte_dobra_inicio else '-',
             'corte_dobra_fim': obra.corte_dobra_fim.strftime('%d/%m/%Y') if obra.corte_dobra_fim else '-',
@@ -3093,16 +2980,11 @@ def api_apresentacao():
             else:
                 percentual_obra = 0
             
-            try:
-                status_calc = obra.status_calculado or 'ABERTA'
-            except:
-                status_calc = 'ABERTA'
-            
             obras_list.append({
                 'codigo': obra.codigo or 'N/A',
                 'nome': obra.nome or 'Sem nome',
                 'cliente': obra.cliente or 'N/A',
-                'status': status_calc,
+                'status': obra.status or 'N/A',
                 'corte_dobra_inicio': obra.corte_dobra_inicio.strftime('%d/%m/%Y') if obra.corte_dobra_inicio else '-',
                 'corte_dobra_fim': obra.corte_dobra_fim.strftime('%d/%m/%Y') if obra.corte_dobra_fim else '-',
                 'montagem_eletro_inicio': obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if obra.montagem_eletro_inicio else '-',
@@ -3193,10 +3075,10 @@ def api_apresentacao():
                 'tarefas_planejadas': tarefas_planejadas,
                 'progresso_medio': round(progresso_medio, 1)
             },
-            'obras_pagina1': obras_list[:10],
-            'obras_pagina2': obras_list[10:20],
-            'ops_pagina1': ops_list[:10],
-            'ops_pagina2': ops_list[10:20],
+            'obras_pagina1': [o for o in obras_list if o in [obras_list[i] for i in range(min(10, len(obras_list)))]],
+            'obras_pagina2': [o for o in obras_list if o in [obras_list[i] for i in range(10, min(20, len(obras_list)))]],
+            'ops_pagina1': [op for op in ops_list if op in [ops_list[i] for i in range(min(10, len(ops_list)))]],
+            'ops_pagina2': [op for op in ops_list if op in [ops_list[i] for i in range(10, min(20, len(ops_list)))]],
             'tarefas': tarefas_list
         })
     

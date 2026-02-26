@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+{% block top_title %}Relatório de Tarefas por Produto{% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #667eea;
+    transition: all 0.3s ease;
+  }
+
+  .summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  }
+
+  .summary-card.success {
+    border-left-color: #10b981;
+  }
+
+  .summary-card.warning {
+    border-left-color: #f59e0b;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .summary-unit {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 4px;
+  }
+
+  .obra-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .obra-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .obra-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .obra-total {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .obra-content {
+    padding: 20px;
+  }
+
+  .produtos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .produto-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+  }
+
+  .produto-nome {
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .produto-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .info-item {
+    color: #6b7280;
+  }
+
+  .info-label {
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .tarefas-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+
+  .tarefas-table th {
+    background: #f3f4f6;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  .tarefas-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  .tarefas-table tr:hover {
+    background: #f9fafb;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .status-aberta {
+    background: #dbeafe;
+    color: #0c4a6e;
+  }
+
+  .status-andamento {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .status-concluida {
+    background: #cffafe;
+    color: #0e7490;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  .print-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 25px;
+    transition: all 0.3s ease;
+  }
+
+  .print-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  @media print {
+    .print-btn {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .rel-header {
+      padding: 20px;
+    }
+
+    .rel-header h1 {
+      font-size: 22px;
+    }
+
+    .summary-cards {
+      grid-template-columns: 1fr;
+    }
+
+    .produtos-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .tarefas-table {
+      font-size: 12px;
+    }
+
+    .tarefas-table th,
+    .tarefas-table td {
+      padding: 8px;
+    }
+  }
+</style>
+
+<!-- Header -->
+<div class="rel-header">
+  <h1>📊 Relatório de Tarefas por Produto</h1>
+  <p>Total de horas previstas agrupadas por produto e obra</p>
+</div>
+
+<!-- Botão de Impressão -->
+<button class="print-btn" onclick="window.print()">🖨️ Imprimir Relatório</button>
+
+<!-- Cards de Resumo -->
+<div class="summary-cards">
+  <div class="summary-card success">
+    <div class="summary-label">📦 Total de Obras</div>
+    <div class="summary-value">{{ relatorio|length }}</div>
+    <div class="summary-unit">Projetos</div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-label">📋 Total de Produtos</div>
+    <div class="summary-value">
+      {% set total_produtos = relatorio|map(attribute='produtos')|map('length')|sum %}
+      {{ total_produtos }}
+    </div>
+    <div class="summary-unit">Itens</div>
+  </div>
+
+  <div class="summary-card warning">
+    <div class="summary-label">⏱️ Total de Horas</div>
+    <div class="summary-value">{{ total_geral }}</div>
+    <div class="summary-unit">Horas previstas</div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-label">📈 Média por Produto</div>
+    <div class="summary-value">
+      {% if total_produtos > 0 %}
+        {{ "%.1f"|format(total_geral / total_produtos) }}
+      {% else %}
+        0
+      {% endif %}
+    </div>
+    <div class="summary-unit">Horas</div>
+  </div>
+</div>
+
+<!-- Relatório por Obra -->
+{% if relatorio %}
+  {% for obra_item in relatorio %}
+    <div class="obra-card">
+      <div class="obra-header">
+        <div>
+          <h2>🏗️ {{ obra_item.obra.codigo }} - {{ obra_item.obra.nome }}</h2>
+        </div>
+        <div class="obra-total">
+          Total: <strong>{{ obra_item.total_horas }} h</strong>
+        </div>
+      </div>
+
+      <div class="obra-content">
+        <!-- Produtos -->
+        <div class="produtos-grid">
+          {% for produto in obra_item.produtos %}
+            <div class="produto-card">
+              <div class="produto-nome">📦 {{ produto.produto }}</div>
+              <div class="produto-info">
+                <div class="info-item">
+                  <span class="info-label">Quantidade:</span> {{ produto.quantidade }} un
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Horas:</span> {{ produto.horas_previstas }} h
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Tabela de Tarefas -->
+        <table class="tarefas-table">
+          <thead>
+            <tr>
+              <th>OP</th>
+              <th>Etapa</th>
+              <th>Tarefa</th>
+              <th>Responsável</th>
+              <th>Horas</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for produto in obra_item.produtos %}
+              {% for tarefa in produto.tarefas %}
+                <tr>
+                  <td><strong>{{ tarefa.op_numero }}</strong></td>
+                  <td>{{ tarefa.etapa }}</td>
+                  <td>{{ tarefa.titulo }}</td>
+                  <td>{{ tarefa.responsavel }}</td>
+                  <td><strong>{{ tarefa.horas_previstas }} h</strong></td>
+                  <td>
+                    {% if tarefa.status == 'ABERTA' %}
+                      <span class="status-badge status-aberta">{{ tarefa.status }}</span>
+                    {% elif tarefa.status == 'EM_ANDAMENTO' %}
+                      <span class="status-badge status-andamento">Em Andamento</span>
+                    {% elif tarefa.status == 'CONCLUIDA' %}
+                      <span class="status-badge status-concluida">Concluída</span>
+                    {% else %}
+                      <span class="status-badge">{{ tarefa.status }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <p>Nenhum dado disponível para o relatório.</p>
+    <p style="font-size: 12px; margin-top: 10px;">Crie obras, produtos e tarefas para gerar o relatório.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

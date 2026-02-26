@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block top_title %}Alocação de Horas por Responsável{% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #667eea;
+    margin-bottom: 25px;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .table-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  .responsavel-name {
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .horas-cell {
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .status-ok {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .status-warning {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-danger {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .diferenca-positive {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .diferenca-negative {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .percentual-high {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .percentual-medium {
+    color: #f59e0b;
+    font-weight: 600;
+  }
+
+  .percentual-low {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .etapas-row {
+    background: #f9fafb;
+  }
+
+  .etapas-table {
+    width: 100%;
+    margin: 15px 0;
+    border-collapse: collapse;
+  }
+
+  .etapas-table th {
+    background: #e5e7eb;
+    color: #1f2937;
+    padding: 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  .etapas-table td {
+    padding: 10px;
+    border-bottom: 1px solid #d1d5db;
+    font-size: 12px;
+  }
+
+  .etapas-title {
+    font-weight: 700;
+    color: #1f2937;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .btn-secondary:hover {
+    background: #d1d5db;
+  }
+
+  @media (max-width: 768px) {
+    .rel-header {
+      padding: 20px;
+    }
+
+    .rel-header h1 {
+      font-size: 22px;
+    }
+
+    table {
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 10px 8px;
+    }
+
+    .button-group {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<!-- Header -->
+<div class="rel-header">
+  <h1>👷 Alocação de Horas por Responsável</h1>
+  <p>Visualização consolidada de horas planejadas e realizadas para cada responsável</p>
+</div>
+
+<!-- Resumo Geral -->
+<div class="summary-card">
+  <div class="summary-label">📊 Total Geral de Horas Planejadas</div>
+  <div class="summary-value">{{ total_geral }} h</div>
+</div>
+
+<!-- Tabela Principal -->
+<div class="table-container">
+  {% if relatorio %}
+    <table>
+      <thead>
+        <tr>
+          <th>Responsável</th>
+          <th>Horas Planejadas</th>
+          <th>Horas Realizadas</th>
+          <th>Diferença</th>
+          <th>% Utilização</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in relatorio %}
+          <!-- Linha Principal -->
+          <tr>
+            <td><span class="responsavel-name">{{ item.operador.nome }}</span></td>
+            <td class="horas-cell">{{ item.horas_planejadas }} h</td>
+            <td class="horas-cell">{{ item.horas_realizadas }} h</td>
+            <td class="horas-cell">
+              {% if item.diferenca > 0 %}
+                <span class="diferenca-positive">+{{ item.diferenca }} h</span>
+              {% elif item.diferenca < 0 %}
+                <span class="diferenca-negative">{{ item.diferenca }} h</span>
+              {% else %}
+                <span>0 h</span>
+              {% endif %}
+            </td>
+            <td class="horas-cell">
+              {% if item.percentual >= 100 %}
+                <span class="percentual-high">{{ "%.1f"|format(item.percentual) }}%</span>
+              {% elif item.percentual >= 80 %}
+                <span class="percentual-medium">{{ "%.1f"|format(item.percentual) }}%</span>
+              {% else %}
+                <span class="percentual-low">{{ "%.1f"|format(item.percentual) }}%</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.percentual >= 100 %}
+                <span class="status-badge status-danger">Sobrecarregado</span>
+              {% elif item.percentual >= 80 %}
+                <span class="status-badge status-warning">Próximo do Limite</span>
+              {% else %}
+                <span class="status-badge status-ok">Dentro do Planejado</span>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- Detalhes das Etapas -->
+          {% if item.etapas %}
+            <tr class="etapas-row">
+              <td colspan="6">
+                <div class="etapas-title">📋 Etapas Alocadas:</div>
+                <table class="etapas-table">
+                  <thead>
+                    <tr>
+                      <th>Etapa</th>
+                      <th>OP</th>
+                      <th style="text-align: center;">Horas Plan.</th>
+                      <th style="text-align: center;">Horas Real.</th>
+                      <th style="text-align: center;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for etapa in item.etapas %}
+                      <tr>
+                        <td>{{ etapa.nome }}</td>
+                        <td><strong>{{ etapa.op.numero }}</strong></td>
+                        <td style="text-align: center;">{{ etapa.horas_planejadas }} h</td>
+                        <td style="text-align: center;">{{ etapa.horas_realizadas }} h</td>
+                        <td style="text-align: center;">
+                          <span class="status-badge status-ok">{{ etapa.status }}</span>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <p>Nenhum responsável com alocação de horas.</p>
+      <p style="font-size: 12px; margin-top: 10px;">Atribua responsáveis às etapas para gerar o relatório.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Botões de Ação -->
+<div class="button-group">
+  <a href="/relatorios/alocacao/detalhado" class="btn btn-primary">📊 Ver Relatório Detalhado</a>
+  <a href="/relatorios" class="btn btn-secondary">← Voltar aos Relatórios</a>
+</div>
+
+{% endblock %}

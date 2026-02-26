@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apontamentos - PCP Industrial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .form-section h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .list-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .list-section h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        table tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-em-andamento {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .status-finalizado {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .info-box {
+            background-color: #e7f3ff;
+            color: #004085;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border-left: 4px solid #004085;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            table th,
+            table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⏱️ Apontamentos de Tempo</h1>
+            <p>Registre e acompanhe o tempo gasto em cada etapa da produção</p>
+        </header>
+
+        <div class="content">
+            <!-- FORMULÁRIO -->
+            <div class="form-section">
+                <h2>Novo Apontamento</h2>
+                
+                <form method="POST" action="{{ url_for('apontamento_novo') }}">
+                    <div class="form-group">
+                        <label for="obra_id">Obra *</label>
+                        <select id="obra_id" name="obra_id" required onchange="carregarOPs()">
+                            <option value="">-- Selecione uma Obra --</option>
+                            {% for obra in obras %}
+                            <option value="{{ obra.id }}">{{ obra.codigo }} - {{ obra.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="op_id">OP (Ordem de Produção) *</label>
+                        <select id="op_id" name="op_id" required onchange="carregarEtapas()">
+                            <option value="">-- Selecione uma OP --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="etapa_id">Etapa *</label>
+                        <select id="etapa_id" name="etapa_id" required>
+                            <option value="">-- Selecione uma Etapa --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="operador_id">Operador *</label>
+                        <select id="operador_id" name="operador_id" required>
+                            <option value="">-- Selecione um Operador --</option>
+                            {% for op in operadores %}
+                            <option value="{{ op.id }}">{{ op.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maquina_id">Máquina (Opcional)</label>
+                        <select id="maquina_id" name="maquina_id">
+                            <option value="">-- Nenhuma Máquina --</option>
+                            {% for maq in maquinas %}
+                            <option value="{{ maq.id }}">{{ maq.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="qtd_boa">Qtd. Boa</label>
+                            <input type="number" id="qtd_boa" name="qtd_boa" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="qtd_refugo">Qtd. Refugo</label>
+                            <input type="number" id="qtd_refugo" name="qtd_refugo" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="obs">Observações</label>
+                        <textarea id="obs" name="obs" placeholder="Digite observações sobre o apontamento..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">✓ Registrar Apontamento</button>
+                </form>
+            </div>
+
+            <!-- LISTA DE APONTAMENTOS -->
+            <div class="list-section">
+                <h2>Apontamentos Recentes</h2>
+                
+                {% if aponts %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Obra</th>
+                            <th>OP</th>
+                            <th>Etapa</th>
+                            <th>Operador</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Horas</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ap in aponts %}
+                        <tr>
+                            <td>{{ ap.obra.codigo }}</td>
+                            <td>{{ ap.op.numero }}</td>
+                            <td>{{ ap.etapa.nome }}</td>
+                            <td>{{ ap.operador.nome }}</td>
+                            <td>{{ ap.inicio.strftime('%d/%m %H:%M') if ap.inicio else '-' }}</td>
+                            <td>{{ ap.fim.strftime('%d/%m %H:%M') if ap.fim else '-' }}</td>
+                            <td>{{ ap.horas_gastas }} h</td>
+                            <td>
+                                <span class="status-badge status-{{ ap.status.lower() }}">
+                                    {{ ap.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if ap.status == 'EM_ANDAMENTO' %}
+                                <form method="POST" action="{{ url_for('apontamento_finalizar', ap_id=ap.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-success">Finalizar</button>
+                                </form>
+                                {% else %}
+                                <span style="color:#999;">Concluído</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="loading">
+                    <p>Nenhum apontamento registrado ainda.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carregar OPs baseado na Obra selecionada
+        function carregarOPs() {
+            const obraId = document.getElementById('obra_id').value;
+            const opSelect = document.getElementById('op_id');
+            
+            opSelect.innerHTML = '<option value="">-- Carregando... --</option>';
+            
+            if (!obraId) {
+                opSelect.innerHTML = '<option value="">-- Selecione uma Obra primeiro --</option>';
+                return;
+            }
+
+            // Buscar OPs da obra selecionada
+            fetch('/api/obra/' + obraId + '/ops')
+                .then(response => response.json())
+                .then(data => {
+                    opSelect.innerHTML = '<option value="">-- Selecione uma OP --</option>';
+                    if (data.ops && data.ops.length > 0) {
+                        data.ops.forEach(op => {
+                            const option = document.createElement('option');
+                            option.value = op.id;
+                            option.textContent = 'OP ' + op.numero;
+                            opSelect.appendChild(option);
+                        });
+                    } else {
+                        opSelect.innerHTML = '<option value="">-- Nenhuma OP nesta obra --</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar OPs:', error);
+                    opSelect.innerHTML = '<option value="">-- Erro ao carregar --</option>';
+                });
+        }
+
+        // Carregar Etapas baseado na OP selecionada
+        function carregarEtapas() {
+            const opId = document.getElementById('op_id').value;
+            const etapaSelect = document.getElementById('etapa_id');
+            
+            etapaSelect.innerHTML = '<option value="">-- Carregando... --</option>';
+            
+            if (!opId) {
+                etapaSelect.innerHTML = '<option value="">-- Selecione uma OP primeiro --</option>';
+                return;
+            }
+
+            // Buscar Etapas da OP selecionada
+            fetch('/api/op/' + opId + '/etapas')
+                .then(response => response.json())
+                .then(data => {
+                    etapaSelect.innerHTML = '<option value="">-- Selecione uma Etapa --</option>';
+                    if (data.etapas && data.etapas.length > 0) {
+                        data.etapas.forEach(etapa => {
+                            const option = document.createElement('option');
+                            option.value = etapa.id;
+                            option.textContent = etapa.nome;
+                            etapaSelect.appendChild(option);
+                        });
+                    } else {
+                        etapaSelect.innerHTML = '<option value="">-- Nenhuma Etapa nesta OP --</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar Etapas:', error);
+                    etapaSelect.innerHTML = '<option value="">-- Erro ao carregar --</option>';
+                });
+        }
+    </script>
+</body>
+</html>

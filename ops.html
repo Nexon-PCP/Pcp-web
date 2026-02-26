@@ -35,10 +35,10 @@
       <label style="font-size: 12px; font-weight: bold; color: #666;">Status</label>
       <select name="status" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
         <option value="">-- Todos --</option>
-        <option value="ABERTA" {% if request.args.get('status') == 'ABERTA' %}selected{% endif %}>🔵 Aberta</option>
-        <option value="EM_EXECUCAO" {% if request.args.get('status') == 'EM_EXECUCAO' %}selected{% endif %}>🟡 Em Execução</option>
-        <option value="CONCLUIDA" {% if request.args.get('status') == 'CONCLUIDA' %}selected{% endif %}>🟢 Concluída</option>
-        <option value="ATRASADA" {% if request.args.get('status') == 'ATRASADA' %}selected{% endif %}>🔴 Atrasada</option>
+        <option value="ABERTA" {% if request.args.get('status') == 'ABERTA' %}selected{% endif %}>ABERTA</option>
+        <option value="EM_EXECUCAO" {% if request.args.get('status') == 'EM_EXECUCAO' %}selected{% endif %}>EM_EXECUCAO</option>
+        <option value="CONCLUIDA" {% if request.args.get('status') == 'CONCLUIDA' %}selected{% endif %}>CONCLUIDA</option>
+        <option value="PAUSADA" {% if request.args.get('status') == 'PAUSADA' %}selected{% endif %}>PAUSADA</option>
       </select>
     </div>
     <div style="display: flex; gap: 8px;">
@@ -55,12 +55,6 @@
     .ops-table td:nth-child(3) { min-width: 180px; }
     .ops-table th:nth-child(4),
     .ops-table td:nth-child(4) { min-width: 160px; }
-    .ops-table th:nth-child(8),
-    .ops-table td:nth-child(8) { min-width: 250px; }
-    .status-aberta { background-color: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-    .status-execucao { background-color: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-    .status-concluida { background-color: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-    .status-atrasada { background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
   </style>
   <table class="ops-table">
     <tr>
@@ -113,19 +107,7 @@
         <td>{{op.produto}}</td>
         <td>{{op.quantidade}}</td>
         <td style="background: #fffbf0; color: #d97706; font-weight: bold; font-size: 16px; text-align: center;">{{op.percentual_calc}}%</td>
-        <td>
-          {% if op.status == 'ABERTA' %}
-            <span class="status-aberta">🔵 Aberta</span>
-          {% elif op.status == 'EM_EXECUCAO' %}
-            <span class="status-execucao">🟡 Em Execução</span>
-          {% elif op.status == 'CONCLUIDA' %}
-            <span class="status-concluida">🟢 Concluída</span>
-          {% elif op.status == 'ATRASADA' %}
-            <span class="status-atrasada">🔴 Atrasada</span>
-          {% else %}
-            <span class="badge">{{op.status}}</span>
-          {% endif %}
-        </td>
+        <td><span class="badge">{{op.status}}</span></td>
         <td style="background: #fffbf0; font-size: 13px;">{{ op.obra.corte_dobra_inicio.strftime('%d/%m/%Y') if op.obra.corte_dobra_inicio else '-' }}</td>
         <td style="background: #fffbf0; font-size: 13px;">{{ op.obra.corte_dobra_fim.strftime('%d/%m/%Y') if op.obra.corte_dobra_fim else '-' }}</td>
         <td style="background: #ecf8fb; font-size: 13px;">{{ op.obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if op.obra.montagem_eletro_inicio else '-' }}</td>

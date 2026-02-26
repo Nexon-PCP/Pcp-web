@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Nova Obra</h2>
+
+<form method="post" action="{{ url_for('obra_criar') }}">
+
+    <div class="row">
+      <input name="codigo" placeholder="Código (ex: OB-001)" required>
+      <input name="nome" placeholder="Nome da Obra" required style="min-width:280px">
+      <input name="cliente" placeholder="Cliente">
+
+      <select name="status">
+        <option value="ATIVA">ATIVA</option>
+        <option value="ENCERRADA">ENCERRADA</option>
+      </select>
+    </div>
+
+    <br>
+
+    <div class="row">
+      <div>
+        <label>Início</label><br>
+        <input type="date" name="data_inicio">
+      </div>
+      <div>
+        <label>Prev. Fim</label><br>
+        <input type="date" name="prev_fim">
+      </div>
+      <div>
+        <label>Fim Real</label><br>
+        <input type="date" name="fim_real">
+      </div>
+    </div>
+
+    <br>
+
+    <label>Produtos (com quantidade)</label>
+
+    <table style="margin-top:10px">
+      <tr>
+        <th>Selecionar</th>
+        <th>Produto</th>
+        <th>Qtd</th>
+      </tr>
+
+      {% for p in produtos %}
+      <tr>
+        <td><input type="checkbox" name="produtos_ids" value="{{ p.id }}"></td>
+        <td>{{ p.nome }}</td>
+        <td><input type="number" name="qtd_{{ p.id }}" value="1" min="1" style="width:90px"></td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <br>
+
+    <div class="row">
+      <button type="submit">💾 Salvar</button>
+      <a href="{{ url_for('obras') }}"><button type="button">Cancelar</button></a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

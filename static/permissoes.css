@@ -1,0 +1,145 @@
+/**
+ * Estilos para Sistema de Permissões
+ */
+
+/* Alerta de Permissão */
+.alerta-permissao {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-bottom: 3px solid #e74c3c;
+    padding: 15px 20px;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.alerta-conteudo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.alerta-icone {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.alerta-texto {
+    color: #721c24;
+    font-weight: 500;
+    font-size: 14px;
+    flex-grow: 1;
+}
+
+.alerta-fechar {
+    background: none;
+    border: none;
+    color: #721c24;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.alerta-fechar:hover {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+}
+
+/* Botões Desabilitados */
+button[disabled],
+a[disabled] {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+button[disabled]:hover,
+a[disabled]:hover {
+    background-color: inherit !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Tooltip para botões desabilitados */
+button[disabled][title],
+a[disabled][title] {
+    position: relative;
+}
+
+button[disabled][title]:hover::after,
+a[disabled][title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+button[disabled][title]:hover::before,
+a[disabled][title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #333;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .alerta-permissao {
+        padding: 12px 15px;
+    }
+    
+    .alerta-conteudo {
+        gap: 10px;
+    }
+    
+    .alerta-icone {
+        font-size: 20px;
+    }
+    
+    .alerta-texto {
+        font-size: 13px;
+    }
+    
+    .alerta-fechar {
+        width: 25px;
+        height: 25px;
+        font-size: 20px;
+    }
+}

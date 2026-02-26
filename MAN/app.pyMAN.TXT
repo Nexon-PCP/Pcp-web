@@ -1,0 +1,730 @@
+from datetime import date, datetime
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+
+ETAPAS_FIXAS = ["CORTE", "DOBRA", "PINTURA", "CALDEIRARIA", "MONTAGEM"]
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pcp.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = "pcp-secret"
+
+db = SQLAlchemy(app)
+
+
+
+
+# ---------------- MODELOS ----------------
+class ObraProduto(db.Model):
+    __tablename__ = "obra_produto"
+
+    obra_id = db.Column(db.Integer, db.ForeignKey("obra.id"), primary_key=True)
+    produto_id = db.Column(db.Integer, db.ForeignKey("produto.id"), primary_key=True)
+
+    quantidade = db.Column(db.Integer, nullable=False, default=1)
+
+    produto = db.relationship("Produto")
+
+
+
+class Produto(db.Model):
+    __tablename__ = "produto"
+    __table_args__ = {"extend_existing": True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False, unique=True)
+    ativo = db.Column(db.Boolean, default=True)
+
+class Obra(db.Model):
+    __tablename__ = "obra"
+
+    id = db.Column(db.Integer, primary_key=True)
+    codigo = db.Column(db.String(50))
+    nome = db.Column(db.String(120))
+    cliente = db.Column(db.String(120))
+    status = db.Column(db.String(20))
+
+    data_inicio = db.Column(db.Date)
+    prev_fim = db.Column(db.Date)
+    fim_real = db.Column(db.Date)
+
+    produtos = db.relationship(
+        "ObraProduto",
+        backref="obra",
+        cascade="all, delete-orphan"
+    )
+
+
+class OP(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(50), nullable=False, unique=True)
+
+    obra_id = db.Column(db.Integer, db.ForeignKey("obra.id"), nullable=False)
+    produto = db.Column(db.String(120))
+    quantidade = db.Column(db.Integer, default=1)
+
+    data_emissao = db.Column(db.Date, default=date.today)
+    prev_inicio = db.Column(db.Date)
+    prev_fim = db.Column(db.Date)
+
+    obra = db.relationship("Obra", backref=db.backref("ops", lazy=True))
+
+    @property
+    def percentual(self):
+        if not self.etapas:
+            return 0.0
+        vals = [(e.percentual or 0) for e in self.etapas]
+        return round(sum(vals) / len(vals), 2)
+
+    @property
+    def status(self):
+        if self.percentual >= 100:
+            return "CONCLUIDA"
+        if self.prev_fim and date.today() > self.prev_fim:
+            return "ATRASADA"
+        if self.percentual > 0:
+            return "EM PRODUCAO"
+        return "ABERTA"
+
+
+class Etapa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    op_id = db.Column(db.Integer, db.ForeignKey("op.id"), nullable=False)
+    nome = db.Column(db.String(80), nullable=False)
+
+    data_inicio = db.Column(db.DateTime)
+    data_fim = db.Column(db.DateTime)
+    
+    # NOVOS CAMPOS PARA GESTÃO DE TEMPO
+    horas_planejadas = db.Column(db.Float, default=0.0)
+    responsavel_id = db.Column(db.Integer, db.ForeignKey("operador.id"), nullable=True)
+
+    percentual = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(30), default="PLANEJADO")  # PLANEJADO / EXECUCAO / CONCLUIDO
+
+    op = db.relationship("OP", backref=db.backref("etapas", lazy=True, cascade="all,delete"))
+    responsavel = db.relationship("Operador", backref=db.backref("etapas_responsavel", lazy=True))
+    
+    @property
+    def horas_realizadas(self):
+        """Calcula horas realizadas a partir dos apontamentos"""
+        aponts = Apontamento.query.filter_by(etapa_id=self.id).filter_by(status="FINALIZADO").all()
+        total = 0
+        for ap in aponts:
+            if ap.fim and ap.inicio:
+                duracao = (ap.fim - ap.inicio).total_seconds() / 3600  # converte para horas
+                total += duracao
+        return round(total, 2)
+
+
+class Operador(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False, unique=True)
+    matricula = db.Column(db.String(50))
+    ativo = db.Column(db.Boolean, default=True)
+
+
+
+
+class Maquina(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False, unique=True)
+    setor = db.Column(db.String(80))
+    ativo = db.Column(db.Boolean, default=True)
+
+
+class Apontamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    obra_id = db.Column(db.Integer, db.ForeignKey("obra.id"), nullable=False)
+    op_id = db.Column(db.Integer, db.ForeignKey("op.id"), nullable=False)
+    etapa_id = db.Column(db.Integer, db.ForeignKey("etapa.id"), nullable=False)
+
+    operador_id = db.Column(db.Integer, db.ForeignKey("operador.id"), nullable=False)
+    maquina_id = db.Column(db.Integer, db.ForeignKey("maquina.id"), nullable=True)
+
+    inicio = db.Column(db.DateTime, default=datetime.now)
+    fim = db.Column(db.DateTime)
+
+    qtd_boa = db.Column(db.Integer, default=0)
+    qtd_refugo = db.Column(db.Integer, default=0)
+    obs = db.Column(db.String(300))
+
+    status = db.Column(db.String(30), default="EM_ANDAMENTO")  # EM_ANDAMENTO / FINALIZADO
+
+    obra = db.relationship("Obra")
+    op = db.relationship("OP")
+    etapa = db.relationship("Etapa")
+    operador = db.relationship("Operador")
+    maquina = db.relationship("Maquina")
+    
+    @property
+    def horas_gastas(self):
+        """Calcula horas gastas neste apontamento"""
+        if self.fim and self.inicio:
+            duracao = (self.fim - self.inicio).total_seconds() / 3600
+            return round(duracao, 2)
+        return 0.0
+
+
+class CronogramaItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    obra_id = db.Column(db.Integer, db.ForeignKey("obra.id"), nullable=False)
+
+    titulo = db.Column(db.String(160), nullable=False)
+    responsavel = db.Column(db.String(120))
+
+    inicio_prev = db.Column(db.Date)
+    fim_prev = db.Column(db.Date)
+
+    status = db.Column(db.String(30), default="PLANEJADO")  # PLANEJADO / EM_EXECUCAO / CONCLUIDO / ATRASADO
+    obs = db.Column(db.String(300))
+
+    obra = db.relationship("Obra", backref=db.backref("cronograma", lazy=True, cascade="all,delete"))
+
+
+# NOVO MODELO PARA TAREFAS (opcional, para rastreamento mais detalhado)
+class Tarefa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    
+    etapa_id = db.Column(db.Integer, db.ForeignKey("etapa.id"), nullable=False)
+    responsavel_id = db.Column(db.Integer, db.ForeignKey("operador.id"), nullable=True)
+    
+    titulo = db.Column(db.String(160), nullable=False)
+    descricao = db.Column(db.String(500))
+    
+    horas_previstas = db.Column(db.Float, default=0.0)
+    horas_realizadas = db.Column(db.Float, default=0.0)
+    
+    data_inicio_prev = db.Column(db.Date)
+    data_fim_prev = db.Column(db.Date)
+    
+    data_inicio_real = db.Column(db.DateTime)
+    data_fim_real = db.Column(db.DateTime)
+    
+    status = db.Column(db.String(30), default="PLANEJADO")  # PLANEJADO / EM_EXECUCAO / CONCLUIDO
+    
+    etapa = db.relationship("Etapa", backref=db.backref("tarefas", lazy=True, cascade="all,delete"))
+    responsavel = db.relationship("Operador", backref=db.backref("tarefas", lazy=True))
+
+
+# ---------------- FUNÇÕES ----------------
+
+def parse_date(s):
+    if not s:
+        return None
+    return datetime.strptime(s, "%Y-%m-%d").date()
+
+
+# ---------------- ROTAS ----------------
+
+@app.route("/")
+def home():
+    return redirect(url_for("dashboard"))
+
+@app.route("/api/obra/<int:obra_id>/produtos")
+def api_produtos_obra(obra_id):
+    obra = Obra.query.get_or_404(obra_id)
+
+    return {
+        "produtos": [
+            {
+                "id": item.produto.id,
+                "nome": item.produto.nome,
+                "quantidade": item.quantidade
+            }
+            for item in obra.produtos
+        ]
+    }
+
+
+@app.route("/dashboard")
+def dashboard():
+    obras_total = Obra.query.count()
+    ops_total = OP.query.count()
+
+    ops = OP.query.all()
+    abertas = sum(1 for o in ops if o.status == "ABERTA")
+    em_prod = sum(1 for o in ops if o.status == "EM PRODUCAO")
+    atrasadas = sum(1 for o in ops if o.status == "ATRASADA")
+    concluidas = sum(1 for o in ops if o.status == "CONCLUIDA")
+
+    ap_total = Apontamento.query.count()
+    ap_and = Apontamento.query.filter_by(status="EM_ANDAMENTO").count()
+    ap_fin = Apontamento.query.filter_by(status="FINALIZADO").count()
+
+    return render_template(
+        "dashboard.html",
+        obras_total=obras_total,
+        ops_total=ops_total,
+        abertas=abertas,
+        em_prod=em_prod,
+        atrasadas=atrasadas,
+        concluidas=concluidas,
+        ap_total=ap_total,
+        ap_and=ap_and,
+        ap_fin=ap_fin,
+    )
+
+
+# --------- CADASTROS ---------
+
+@app.route("/cadastros")
+def cadastros():
+    operadores = Operador.query.order_by(Operador.nome.asc()).all()
+    maquinas = Maquina.query.order_by(Maquina.nome.asc()).all()
+    produtos = Produto.query.order_by(Produto.nome.asc()).all()
+    return render_template("cadastros.html", operadores=operadores, maquinas=maquinas, produtos=produtos)
+
+@app.route("/produtos")
+def listar_produtos():
+    produtos = Produto.query.order_by(Produto.nome.asc()).all()
+    return render_template("produtos.html", produtos=produtos)
+
+@app.route("/produtos/novo", methods=["POST"])
+def produto_novo():
+    nome = request.form["nome"].strip()
+    if nome:
+        db.session.add(Produto(nome=nome))
+        db.session.commit()
+    return redirect(url_for("listar_produtos"))
+
+@app.route("/cadastros/produtos")
+def cad_produtos():
+    produtos = Produto.query.order_by(Produto.nome.asc()).all()
+    return render_template("cad_produtos.html", produtos=produtos)
+
+@app.route("/cadastros/produtos/novo", methods=["POST"])
+def cad_produtos_novo():
+    nome = request.form["nome"].strip()
+    if nome:
+        if not Produto.query.filter_by(nome=nome).first():
+            db.session.add(Produto(nome=nome))
+            db.session.commit()
+    return redirect(url_for("cad_produtos"))
+
+
+
+@app.route("/cadastros/operador", methods=["POST"])
+def add_operador():
+    nome = request.form["nome"].strip()
+    matricula = request.form.get("matricula", "").strip() or None
+    if nome:
+        db.session.add(Operador(nome=nome, matricula=matricula))
+        db.session.commit()
+    return redirect(url_for("cadastros"))
+
+
+@app.route("/cadastros/maquina", methods=["POST"])
+def add_maquina():
+    nome = request.form["nome"].strip()
+    setor = request.form.get("setor", "").strip() or None
+    if nome:
+        db.session.add(Maquina(nome=nome, setor=setor))
+        db.session.commit()
+    return redirect(url_for("cadastros"))
+@app.route("/cadastros/produto", methods=["POST"])
+def add_produto():
+    nome = request.form["nome"].strip()
+    if nome:
+        db.session.add(Produto(nome=nome, ativo=True))
+        db.session.commit()
+    return redirect(url_for("cadastros"))
+
+
+
+# --------- OBRAS ---------
+
+@app.route("/obras")
+def listar_obras():
+    obras = Obra.query.order_by(Obra.codigo.asc()).all()
+    return render_template("obras.html", obras=obras)
+
+@app.route("/obras/<int:obra_id>/editar", methods=["GET", "POST"])
+def editar_obra(obra_id):
+    obra = Obra.query.get_or_404(obra_id)
+    produtos = Produto.query.filter_by(ativo=True).order_by(Produto.nome.asc()).all()
+
+    if request.method == "POST":
+        obra.codigo = request.form["codigo"].strip()
+        obra.nome = request.form["nome"].strip()
+        obra.cliente = request.form.get("cliente", "").strip()
+        obra.status = request.form.get("status", "ATIVA")
+
+        obra.data_inicio = parse_date(request.form.get("data_inicio"))
+        obra.prev_fim = parse_date(request.form.get("prev_fim"))
+        obra.fim_real = parse_date(request.form.get("fim_real"))
+
+        # Atualiza produtos com quantidade (ObraProduto)
+        obra.produtos.clear()  # remove os atuais (delete-orphan faz o resto)
+
+        # pega todos os ids marcados (ex: produtos_ids)
+        ids = request.form.getlist("produtos_ids")
+        for pid in ids:
+            qtd = request.form.get(f"qtd_{pid}", "").strip()
+            qtd = int(qtd) if qtd.isdigit() else 1
+            obra.produtos.append(ObraProduto(produto_id=int(pid), quantidade=qtd))
+
+        db.session.commit()
+        return redirect(url_for("listar_obras"))
+
+    # ids já selecionados + qtd
+    selecionados = {str(item.produto_id): item.quantidade for item in obra.produtos}
+    return render_template("obra_edit.html", obra=obra, produtos=produtos, selecionados=selecionados)
+
+
+@app.route("/obras/<int:obra_id>/excluir", methods=["POST"])
+def excluir_obra(obra_id):
+    obra = Obra.query.get_or_404(obra_id)
+    db.session.delete(obra)
+    db.session.commit()
+    return redirect(url_for("listar_obras"))
+
+
+
+
+@app.route("/obras/nova", methods=["GET", "POST"])
+def nova_obra():
+    if request.method == "POST":
+        obra = Obra(
+            codigo=request.form["codigo"],
+            nome=request.form["nome"],
+            cliente=request.form.get("cliente"),
+            status=request.form.get("status"),
+            data_inicio=parse_date(request.form.get("data_inicio")),
+            prev_fim=parse_date(request.form.get("prev_fim")),
+            fim_real=parse_date(request.form.get("fim_real")),
+        )
+        db.session.add(obra)
+        db.session.commit()
+
+        produtos_ids = request.form.getlist("produtos_ids")
+        for pid in produtos_ids:
+            qtd = request.form.get(f"qtd_{pid}") or 1
+            db.session.add(ObraProduto(
+                obra_id=obra.id,
+                produto_id=int(pid),
+                quantidade=int(qtd)
+            ))
+
+        db.session.commit()
+        return redirect(url_for("listar_obras"))
+
+    produtos = Produto.query.filter_by(ativo=True).order_by(Produto.nome.asc()).all()
+    return render_template("obra_form.html", produtos=produtos)
+
+
+
+
+# --------- OPS ---------
+
+@app.route("/ops")
+def listar_ops():
+    ops = OP.query.order_by(OP.id.desc()).all()
+    return render_template("ops.html", ops=ops)
+
+
+@app.route("/ops/nova", methods=["GET", "POST"])
+def nova_op():
+    obras = Obra.query.order_by(Obra.codigo.asc()).all()
+
+    if request.method == "POST":
+        op = OP(
+            numero=request.form["numero"].strip(),
+            obra_id=int(request.form["obra_id"]),
+            produto=request.form.get("produto", "").strip() or None,
+            quantidade=int(request.form.get("quantidade", 1) or 1),
+            prev_inicio=parse_date(request.form.get("prev_inicio")),
+            prev_fim=parse_date(request.form.get("prev_fim")),
+        )
+        db.session.add(op)
+        db.session.commit()
+
+        # cria etapas fixas automaticamente
+        for nome in ETAPAS_FIXAS:
+            db.session.add(Etapa(op_id=op.id, nome=nome))
+        db.session.commit()
+
+        return redirect(url_for("detalhe_op", op_id=op.id))
+
+    return render_template("op_form.html", obras=obras)
+
+
+@app.route("/ops/<int:op_id>")
+def detalhe_op(op_id):
+    op = OP.query.get_or_404(op_id)
+    operadores = Operador.query.filter_by(ativo=True).order_by(Operador.nome.asc()).all()
+    return render_template("op_detail.html", op=op, operadores=operadores)
+
+
+@app.route("/etapas/<int:etapa_id>/atualizar", methods=["POST"])
+def atualizar_etapa(etapa_id):
+    etapa = Etapa.query.get_or_404(etapa_id)
+
+    etapa.percentual = float(request.form.get("percentual", 0) or 0)
+    etapa.horas_planejadas = float(request.form.get("horas_planejadas", 0) or 0)
+    
+    responsavel_id = request.form.get("responsavel_id")
+    if responsavel_id:
+        etapa.responsavel_id = int(responsavel_id)
+    
+    acao = request.form.get("acao")
+
+    if acao == "iniciar":
+        etapa.data_inicio = datetime.now()
+        etapa.status = "EXECUCAO"
+
+    if acao == "concluir":
+        etapa.data_fim = datetime.now()
+        etapa.percentual = 100.0
+        etapa.status = "CONCLUIDO"
+
+    db.session.commit()
+    return redirect(url_for("detalhe_op", op_id=etapa.op_id))
+
+
+@app.route("/api/etapas/<int:op_id>")
+def api_etapas(op_id):
+    op = OP.query.get_or_404(op_id)
+    return {
+        "op": op.numero,
+        "etapas": [
+            {"id": e.id, "nome": e.nome, "status": e.status, "percentual": e.percentual}
+            for e in op.etapas
+        ],
+    }
+
+
+# --------- TAREFAS ---------
+
+@app.route("/tarefas/nova", methods=["POST"])
+def tarefa_nova():
+    etapa_id = int(request.form["etapa_id"])
+    etapa = Etapa.query.get_or_404(etapa_id)
+    
+    titulo = request.form.get("titulo", "").strip()
+    responsavel_id = request.form.get("responsavel_id")
+    horas_previstas = float(request.form.get("horas_previstas", 0) or 0)
+    
+    if titulo:
+        tarefa = Tarefa(
+            etapa_id=etapa_id,
+            titulo=titulo,
+            responsavel_id=int(responsavel_id) if responsavel_id else None,
+            horas_previstas=horas_previstas,
+            status="PLANEJADO"
+        )
+        db.session.add(tarefa)
+        db.session.commit()
+    
+    return redirect(url_for("detalhe_op", op_id=etapa.op_id))
+
+
+@app.route("/tarefas/<int:tarefa_id>/atualizar", methods=["POST"])
+def tarefa_atualizar(tarefa_id):
+    tarefa = Tarefa.query.get_or_404(tarefa_id)
+    
+    tarefa.horas_realizadas = float(request.form.get("horas_realizadas", 0) or 0)
+    acao = request.form.get("acao")
+    
+    if acao == "iniciar":
+        tarefa.data_inicio_real = datetime.now()
+        tarefa.status = "EM_EXECUCAO"
+    elif acao == "concluir":
+        tarefa.data_fim_real = datetime.now()
+        tarefa.status = "CONCLUIDO"
+    
+    db.session.commit()
+    return redirect(url_for("detalhe_op", op_id=tarefa.etapa.op_id))
+
+
+@app.route("/tarefas/<int:tarefa_id>/excluir", methods=["POST"])
+def tarefa_excluir(tarefa_id):
+    tarefa = Tarefa.query.get_or_404(tarefa_id)
+    op_id = tarefa.etapa.op_id
+    db.session.delete(tarefa)
+    db.session.commit()
+    return redirect(url_for("detalhe_op", op_id=op_id))
+
+
+# --------- APONTAMENTOS ---------
+
+@app.route("/apontamentos")
+def apontamentos():
+    obras = Obra.query.order_by(Obra.codigo.asc()).all()
+    ops = OP.query.order_by(OP.id.desc()).all()
+    operadores = Operador.query.filter_by(ativo=True).order_by(Operador.nome.asc()).all()
+    maquinas = Maquina.query.filter_by(ativo=True).order_by(Maquina.nome.asc()).all()
+    aponts = Apontamento.query.order_by(Apontamento.id.desc()).limit(50).all()
+
+    return render_template(
+        "apontamentos.html",
+        obras=obras,
+        ops=ops,
+        operadores=operadores,
+        maquinas=maquinas,
+        aponts=aponts,
+    )
+
+
+@app.route("/apontamentos/novo", methods=["POST"])
+def apontamento_novo():
+    obra_id = int(request.form["obra_id"])
+    op_id = int(request.form["op_id"])
+    etapa_id = int(request.form["etapa_id"])
+    operador_id = int(request.form["operador_id"])
+
+    maquina_id = request.form.get("maquina_id")
+    maquina_id = int(maquina_id) if maquina_id else None
+
+    qtd_boa = int(request.form.get("qtd_boa", 0) or 0)
+    qtd_refugo = int(request.form.get("qtd_refugo", 0) or 0)
+    obs = request.form.get("obs", "").strip() or None
+
+    ap = Apontamento(
+        obra_id=obra_id,
+        op_id=op_id,
+        etapa_id=etapa_id,
+        operador_id=operador_id,
+        maquina_id=maquina_id,
+        inicio=datetime.now(),
+        qtd_boa=qtd_boa,
+        qtd_refugo=qtd_refugo,
+        obs=obs,
+        status="EM_ANDAMENTO",
+    )
+
+    db.session.add(ap)
+    db.session.commit()
+    return redirect(url_for("apontamentos"))
+
+
+@app.route("/apontamentos/<int:ap_id>/finalizar", methods=["POST"])
+def apontamento_finalizar(ap_id):
+    ap = Apontamento.query.get_or_404(ap_id)
+    ap.fim = datetime.now()
+    ap.status = "FINALIZADO"
+    db.session.commit()
+    return redirect(url_for("apontamentos"))
+
+
+# --------- CRONOGRAMA ---------
+
+@app.route("/cronograma")
+def cronograma():
+    obras = Obra.query.order_by(Obra.codigo.asc()).all()
+    obra_id = request.args.get("obra_id", type=int)
+
+    itens = []
+    obra_sel = None
+    if obra_id:
+        obra_sel = Obra.query.get(obra_id)
+        if obra_sel:
+            itens = CronogramaItem.query.filter_by(obra_id=obra_id).order_by(CronogramaItem.id.desc()).all()
+
+    return render_template("cronograma.html", obras=obras, obra_sel=obra_sel, itens=itens)
+
+
+@app.route("/cronograma/novo", methods=["POST"])
+def cronograma_novo():
+    obra_id = int(request.form["obra_id"])
+    titulo = request.form["titulo"].strip()
+    responsavel = request.form.get("responsavel", "").strip() or None
+    inicio_prev = parse_date(request.form.get("inicio_prev"))
+    fim_prev = parse_date(request.form.get("fim_prev"))
+
+    item = CronogramaItem(
+        obra_id=obra_id,
+        titulo=titulo,
+        responsavel=responsavel,
+        inicio_prev=inicio_prev,
+        fim_prev=fim_prev,
+        status="PLANEJADO",
+    )
+    db.session.add(item)
+    db.session.commit()
+
+    return redirect(url_for("cronograma", obra_id=obra_id))
+
+
+# --------- RELATÓRIOS ---------
+
+@app.route("/relatorios")
+def relatorios():
+    total_ops = OP.query.count()
+    total_obras = Obra.query.count()
+    ops_atrasadas = [op for op in OP.query.all() if op.status == "ATRASADA"]
+    apont_finalizados = Apontamento.query.filter_by(status="FINALIZADO").count()
+
+    return render_template(
+        "relatorios.html",
+        total_ops=total_ops,
+        total_obras=total_obras,
+        ops_atrasadas=ops_atrasadas,
+        apont_finalizados=apont_finalizados,
+    )
+
+
+@app.route("/relatorios/tempo")
+def rel_tempo():
+    """Relatório de gestão de tempo por etapa"""
+    etapas = Etapa.query.all()
+    
+    relatorio = []
+    for etapa in etapas:
+        relatorio.append({
+            "etapa": etapa,
+            "horas_planejadas": etapa.horas_planejadas,
+            "horas_realizadas": etapa.horas_realizadas,
+            "diferenca": etapa.horas_planejadas - etapa.horas_realizadas,
+            "percentual_utilizacao": (etapa.horas_realizadas / etapa.horas_planejadas * 100) if etapa.horas_planejadas > 0 else 0
+        })
+    
+    return render_template("rel_tempo.html", relatorio=relatorio)
+
+
+@app.route("/relatorios/operador")
+def rel_operador():
+    """Relatório de horas por operador e etapa"""
+    operadores = Operador.query.filter_by(ativo=True).order_by(Operador.nome.asc()).all()
+    
+    relatorio = []
+    for operador in operadores:
+        aponts = Apontamento.query.filter_by(operador_id=operador.id).filter_by(status="FINALIZADO").all()
+        
+        for apont in aponts:
+            relatorio.append({
+                "operador": operador.nome,
+                "etapa": apont.etapa.nome,
+                "op": apont.op.numero,
+                "horas_gastas": apont.horas_gastas,
+                "data": apont.fim.strftime("%d/%m/%Y") if apont.fim else "-"
+            })
+    
+    return render_template("rel_operador.html", relatorio=relatorio)
+
+
+@app.route("/relatorios/tarefas")
+def rel_tarefas():
+    """Relatório de tarefas com horas planejadas vs realizadas"""
+    tarefas = Tarefa.query.all()
+
+    total_prev = sum(t.horas_previstas for t in tarefas)
+    total_real = sum(t.horas_realizadas for t in tarefas)
+
+    return render_template(
+        "rel_tarefas.html",
+        tarefas=tarefas,
+        total_prev=total_prev,
+        total_real=total_real
+    )
+
+
+# ---------------- START ----------------
+
+if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)

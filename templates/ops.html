@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <h2>Ordens de Produção</h2>
+    <a href="/ops/nova"><button>+ Nova OP</button></a>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card">
+  <h3 style="margin-top:0">Filtros</h3>
+  <form method="get" action="/ops" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end;">
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Cliente</label>
+      <input type="text" name="cliente" placeholder="Filtrar por cliente" value="{{ request.args.get('cliente', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Início (De)</label>
+      <input type="date" name="data_inicio_de" value="{{ request.args.get('data_inicio_de', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Início (Até)</label>
+      <input type="date" name="data_inicio_ate" value="{{ request.args.get('data_inicio_ate', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Fim (De)</label>
+      <input type="date" name="data_fim_de" value="{{ request.args.get('data_fim_de', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Fim (Até)</label>
+      <input type="date" name="data_fim_ate" value="{{ request.args.get('data_fim_ate', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Status</label>
+      <select name="status" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        <option value="">-- Todos --</option>
+        <option value="ABERTA" {% if request.args.get('status') == 'ABERTA' %}selected{% endif %}>🔵 Aberta</option>
+        <option value="EM_EXECUCAO" {% if request.args.get('status') == 'EM_EXECUCAO' %}selected{% endif %}>🟡 Em Execução</option>
+        <option value="CONCLUIDA" {% if request.args.get('status') == 'CONCLUIDA' %}selected{% endif %}>🟢 Concluída</option>
+        <option value="ATRASADA" {% if request.args.get('status') == 'ATRASADA' %}selected{% endif %}>🔴 Atrasada</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" style="background-color: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex: 1;">🔍 Filtrar</button>
+      <a href="/ops" style="background-color: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; display: flex; align-items: center; justify-content: center; flex: 1;">Limpar</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <style>
+    .ops-table { width: 100%; }
+    .ops-table th:nth-child(3),
+    .ops-table td:nth-child(3) { min-width: 180px; }
+    .ops-table th:nth-child(4),
+    .ops-table td:nth-child(4) { min-width: 160px; }
+    .ops-table th:nth-child(8),
+    .ops-table td:nth-child(8) { min-width: 250px; }
+    .status-aberta { background-color: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    .status-execucao { background-color: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    .status-concluida { background-color: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    .status-atrasada { background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+  </style>
+  <table class="ops-table">
+    <tr>
+      <th>OP</th>
+      <th>Obra</th>
+      <th>Cliente</th>
+      <th>Nome Obra</th>
+      <th>Produto</th>
+      <th>Qtd</th>
+      <th style="background: #fffbf0; color: #d97706; font-weight: bold; font-size: 16px;">%</th>
+      <th>Status</th>
+      <th colspan="2" style="text-align: center; background: #fff3cd;">🔧 Corte/Dobra</th>
+      <th colspan="2" style="text-align: center; background: #d1ecf1;">⚙️ Montagem Eletromecanica</th>
+      <th>Ações</th>
+    </tr>
+    <tr>
+      <th colspan="8"></th>
+      <th style="background: #fff3cd; font-size: 12px;">
+        <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=corte_dobra_inicio&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_inicio' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+          Início
+          {% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_inicio' %}↑{% elif coluna_ordem == 'corte_dobra_inicio' %}↓{% endif %}
+        </a>
+      </th>
+      <th style="background: #fff3cd; font-size: 12px;">
+        <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=corte_dobra_fim&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_fim' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+          Fim
+          {% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_fim' %}↑{% elif coluna_ordem == 'corte_dobra_fim' %}↓{% endif %}
+        </a>
+      </th>
+      <th style="background: #d1ecf1; font-size: 12px;">
+        <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=montagem_eletro_inicio&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_inicio' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+          Início
+          {% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_inicio' %}↑{% elif coluna_ordem == 'montagem_eletro_inicio' %}↓{% endif %}
+        </a>
+      </th>
+      <th style="background: #d1ecf1; font-size: 12px;">
+        <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=montagem_eletro_fim&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_fim' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+          Fim
+          {% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_fim' %}↑{% elif coluna_ordem == 'montagem_eletro_fim' %}↓{% endif %}
+        </a>
+      </th>
+      <th></th>
+    </tr>
+    {% for op in ops %}
+      <tr>
+        <td><a href="/ops/{{op.id}}">{{op.numero}}</a></td>
+        <td>{{op.obra.codigo}}</td>
+        <td>{{op.obra.cliente or '-'}}</td>
+        <td>{{op.obra.nome or '-'}}</td>
+        <td>{{op.produto}}</td>
+        <td>{{op.quantidade}}</td>
+        <td style="background: #fffbf0; color: #d97706; font-weight: bold; font-size: 16px; text-align: center;">{{op.percentual_calc}}%</td>
+        <td>
+          {% if op.status == 'ABERTA' %}
+            <span class="status-aberta">🔵 Aberta</span>
+          {% elif op.status == 'EM_EXECUCAO' %}
+            <span class="status-execucao">🟡 Em Execução</span>
+          {% elif op.status == 'CONCLUIDA' %}
+            <span class="status-concluida">🟢 Concluída</span>
+          {% elif op.status == 'ATRASADA' %}
+            <span class="status-atrasada">🔴 Atrasada</span>
+          {% else %}
+            <span class="badge">{{op.status}}</span>
+          {% endif %}
+        </td>
+        <td style="background: #fffbf0; font-size: 13px;">{{ op.obra.corte_dobra_inicio.strftime('%d/%m/%Y') if op.obra.corte_dobra_inicio else '-' }}</td>
+        <td style="background: #fffbf0; font-size: 13px;">{{ op.obra.corte_dobra_fim.strftime('%d/%m/%Y') if op.obra.corte_dobra_fim else '-' }}</td>
+        <td style="background: #ecf8fb; font-size: 13px;">{{ op.obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if op.obra.montagem_eletro_inicio else '-' }}</td>
+        <td style="background: #ecf8fb; font-size: 13px;">{{ op.obra.montagem_eletro_fim.strftime('%d/%m/%Y') if op.obra.montagem_eletro_fim else '-' }}</td>
+        <td>
+          <form method="post" action="/ops/{{op.id}}/excluir" style="display: inline;">
+            <button type="submit" onclick="return confirm('Tem certeza que deseja excluir esta OP?')" style="background-color: #f44336; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Excluir</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if not ops %}
+    <p style="text-align: center; color: #999; padding: 20px;">Nenhuma OP encontrada com os filtros aplicados.</p>
+  {% endif %}
+</div>
+{% endblock %}

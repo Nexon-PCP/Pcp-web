@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% block top_title %}Relatório de Datas por Operador{% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .filtros-container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .filtros-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+
+  .filtro-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .filtro-group input,
+  .filtro-group select {
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .filtro-group input:focus,
+  .filtro-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .filtros-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-filtrar {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .btn-filtrar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .btn-limpar {
+    padding: 10px 20px;
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .btn-limpar:hover {
+    background: #e5e7eb;
+  }
+
+  .summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #667eea;
+    margin-bottom: 25px;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .operador-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .operador-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .operador-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .operador-total {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .operador-content {
+    padding: 20px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: #f3f4f6;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+    color: #4b5563;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-planejado {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .badge-execucao {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .badge-concluido {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+
+  .print-button {
+    margin-bottom: 20px;
+  }
+
+  .print-button button {
+    padding: 10px 20px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .print-button button:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  @media print {
+    .filtros-container,
+    .print-button,
+    .filtros-buttons {
+      display: none;
+    }
+  }
+</style>
+
+<div class="rel-header">
+  <h1>📅 Relatório de Datas por Operador</h1>
+  <p>Visualize o que cada operador fará em cada período planejado</p>
+</div>
+
+<div class="print-button">
+  <button onclick="window.print()">🖨️ Imprimir Relatório</button>
+</div>
+
+<div class="filtros-container">
+  <div class="filtros-title">Filtros</div>
+  <form method="GET" action="/relatorios/datas-operador">
+    <div class="filtros-grid">
+      <div class="filtro-group">
+        <label for="data_inicio">Data Início</label>
+        <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio_param }}">
+      </div>
+      <div class="filtro-group">
+        <label for="data_fim">Data Fim</label>
+        <input type="date" id="data_fim" name="data_fim" value="{{ data_fim_param }}">
+      </div>
+      <div class="filtro-group">
+        <label for="operador_id">Operador</label>
+        <select id="operador_id" name="operador_id">
+          <option value="">-- Todos os Operadores --</option>
+          {% for op in operadores %}
+            <option value="{{ op.id }}" {% if operador_id_param == op.id|string %}selected{% endif %}>{{ op.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="filtros-buttons">
+      <button type="submit" class="btn-filtrar">🔍 Filtrar</button>
+      <a href="/relatorios/datas-operador" class="btn-limpar" style="text-decoration: none; display: inline-block;">🔄 Limpar Filtros</a>
+    </div>
+  </form>
+</div>
+
+{% if relatorio %}
+  <div class="summary-card">
+    <div class="summary-label">Total de Horas Planejadas</div>
+    <div class="summary-value">{{ "%.1f"|format(total_geral) }} h</div>
+  </div>
+
+  {% for operador_data in relatorio %}
+    <div class="operador-card">
+      <div class="operador-header">
+        <h2>👤 {{ operador_data.operador }}</h2>
+        <div class="operador-total">{{ "%.1f"|format(operador_data.total_horas) }} horas</div>
+      </div>
+      <div class="operador-content">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>OP</th>
+                <th>Etapa</th>
+                <th>Tarefa</th>
+                <th>Início Previsto</th>
+                <th>Fim Previsto</th>
+                <th>Horas Previstas</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tarefa in operador_data.tarefas %}
+                <tr>
+                  <td><strong>{{ tarefa.op }}</strong></td>
+                  <td>{{ tarefa.etapa }}</td>
+                  <td>{{ tarefa.tarefa }}</td>
+                  <td>{{ tarefa.data_inicio }}</td>
+                  <td>{{ tarefa.data_fim }}</td>
+                  <td><strong>{{ tarefa.horas_previstas }} h</strong></td>
+                  <td>
+                    {% if tarefa.status == "PLANEJADO" %}
+                      <span class="badge badge-planejado">{{ tarefa.status }}</span>
+                    {% elif tarefa.status == "EM_EXECUCAO" %}
+                      <span class="badge badge-execucao">{{ tarefa.status }}</span>
+                    {% elif tarefa.status == "CONCLUIDO" %}
+                      <span class="badge badge-concluido">{{ tarefa.status }}</span>
+                    {% else %}
+                      <span class="badge">{{ tarefa.status }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="no-data">
+    <p>Nenhuma tarefa encontrada com os filtros selecionados.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

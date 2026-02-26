@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+{% block top_title %}Alocação Detalhada de Horas{% endblock %}
+{% block content %}
+
+<style>
+  .rel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .rel-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .rel-header p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .responsavel-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+  }
+
+  .responsavel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .responsavel-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .responsavel-content {
+    padding: 20px;
+  }
+
+  .summary-badges {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .badge-item {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+  }
+
+  .badge-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .badge-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    margin-bottom: 25px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  tr:hover {
+    background: #f9fafb;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .status-aberta {
+    background: #dbeafe;
+    color: #0c4a6e;
+  }
+
+  .status-andamento {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .status-concluida {
+    background: #cffafe;
+    color: #0e7490;
+  }
+
+  .diferenca-positive {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .diferenca-negative {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .resumo-box {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+    margin-top: 20px;
+  }
+
+  .resumo-box h4 {
+    margin: 0 0 15px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .resumo-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+
+  .resumo-label {
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  .resumo-value {
+    color: #1f2937;
+    font-weight: 700;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .btn-secondary:hover {
+    background: #d1d5db;
+  }
+
+  @media (max-width: 768px) {
+    .rel-header {
+      padding: 20px;
+    }
+
+    .rel-header h1 {
+      font-size: 22px;
+    }
+
+    .responsavel-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .summary-badges {
+      grid-template-columns: 1fr;
+    }
+
+    .resumo-item {
+      grid-template-columns: 1fr;
+    }
+
+    .button-group {
+      flex-direction: column;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+  }
+</style>
+
+<!-- Header -->
+<div class="rel-header">
+  <h1>📊 Alocação Detalhada de Horas</h1>
+  <p>Visualização completa: Etapas + Tarefas + Apontamentos por Responsável</p>
+</div>
+
+<!-- Conteúdo -->
+{% if relatorio %}
+  {% for item in relatorio %}
+    <div class="responsavel-card">
+      <div class="responsavel-header">
+        <h2>👤 {{ item.operador.nome }}</h2>
+      </div>
+
+      <div class="responsavel-content">
+        <!-- Resumo Rápido -->
+        <div class="summary-badges">
+          <div class="badge-item">
+            <div class="badge-label">📋 Horas em Etapas</div>
+            <div class="badge-value">{{ item.total_horas_etapas }} h</div>
+          </div>
+          <div class="badge-item">
+            <div class="badge-label">✅ Horas em Tarefas</div>
+            <div class="badge-value">{{ item.total_horas_tarefas }} h</div>
+          </div>
+          <div class="badge-item">
+            <div class="badge-label">⏱️ Horas em Apontamentos</div>
+            <div class="badge-value">{{ "%.2f"|format(item.total_horas_apontamentos) }} h</div>
+          </div>
+        </div>
+
+        <!-- ETAPAS -->
+        {% if item.etapas %}
+          <div class="section-title">📋 Etapas Alocadas ({{ item.etapas|length }})</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Etapa</th>
+                  <th>OP</th>
+                  <th>Horas Planejadas</th>
+                  <th>Horas Realizadas</th>
+                  <th>Diferença</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for etapa in item.etapas %}
+                  <tr>
+                    <td><strong>{{ etapa.nome }}</strong></td>
+                    <td>{{ etapa.op.numero }}</td>
+                    <td class="horas-cell">{{ etapa.horas_planejadas }} h</td>
+                    <td class="horas-cell">{{ etapa.horas_realizadas }} h</td>
+                    <td>
+                      {% set diff = etapa.horas_planejadas - etapa.horas_realizadas %}
+                      {% if diff > 0 %}
+                        <span class="diferenca-positive">+{{ diff }} h</span>
+                      {% elif diff < 0 %}
+                        <span class="diferenca-negative">{{ diff }} h</span>
+                      {% else %}
+                        <span>0 h</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if etapa.status == 'ABERTA' %}
+                        <span class="status-badge status-aberta">{{ etapa.status }}</span>
+                      {% elif etapa.status == 'EM_ANDAMENTO' %}
+                        <span class="status-badge status-andamento">Em Andamento</span>
+                      {% elif etapa.status == 'CONCLUIDA' %}
+                        <span class="status-badge status-concluida">Concluída</span>
+                      {% else %}
+                        <span class="status-badge">{{ etapa.status }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        <!-- TAREFAS -->
+        {% if item.tarefas %}
+          <div class="section-title">✅ Tarefas Alocadas ({{ item.tarefas|length }})</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarefa</th>
+                  <th>Etapa</th>
+                  <th>Horas Previstas</th>
+                  <th>Horas Realizadas</th>
+                  <th>Diferença</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for tarefa in item.tarefas %}
+                  <tr>
+                    <td><strong>{{ tarefa.titulo }}</strong></td>
+                    <td>{{ tarefa.etapa.nome }}</td>
+                    <td class="horas-cell">{{ tarefa.horas_previstas }} h</td>
+                    <td class="horas-cell">{{ tarefa.horas_realizadas }} h</td>
+                    <td>
+                      {% set diff = tarefa.horas_previstas - tarefa.horas_realizadas %}
+                      {% if diff > 0 %}
+                        <span class="diferenca-positive">+{{ diff }} h</span>
+                      {% elif diff < 0 %}
+                        <span class="diferenca-negative">{{ diff }} h</span>
+                      {% else %}
+                        <span>0 h</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if tarefa.status == 'ABERTA' %}
+                        <span class="status-badge status-aberta">{{ tarefa.status }}</span>
+                      {% elif tarefa.status == 'EM_ANDAMENTO' %}
+                        <span class="status-badge status-andamento">Em Andamento</span>
+                      {% elif tarefa.status == 'CONCLUIDA' %}
+                        <span class="status-badge status-concluida">Concluída</span>
+                      {% else %}
+                        <span class="status-badge">{{ tarefa.status }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        <!-- APONTAMENTOS -->
+        {% if item.apontamentos %}
+          <div class="section-title">⏱️ Apontamentos Realizados ({{ item.apontamentos|length }})</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>OP</th>
+                  <th>Etapa</th>
+                  <th>Data Início</th>
+                  <th>Data Fim</th>
+                  <th>Horas Gastas</th>
+                  <th>Qtd Boa</th>
+                  <th>Qtd Refugo</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for apontamento in item.apontamentos %}
+                  <tr>
+                    <td><strong>{{ apontamento.op.numero }}</strong></td>
+                    <td>{{ apontamento.etapa.nome }}</td>
+                    <td>{{ apontamento.inicio.strftime("%d/%m/%Y %H:%M") if apontamento.inicio else "-" }}</td>
+                    <td>{{ apontamento.fim.strftime("%d/%m/%Y %H:%M") if apontamento.fim else "-" }}</td>
+                    <td class="horas-cell"><strong>{{ apontamento.horas_gastas }} h</strong></td>
+                    <td>{{ apontamento.qtd_boa }}</td>
+                    <td>{{ apontamento.qtd_refugo }}</td>
+                    <td>{{ apontamento.obs or "-" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        <!-- RESUMO -->
+        <div class="resumo-box">
+          <h4>📊 Resumo</h4>
+          <div class="resumo-item">
+            <div class="resumo-label">Total Planejado:</div>
+            <div class="resumo-value">{{ item.total_horas_etapas + item.total_horas_tarefas }} h</div>
+          </div>
+          <div class="resumo-item">
+            <div class="resumo-label">Total Realizado:</div>
+            <div class="resumo-value">{{ "%.2f"|format(item.total_horas_apontamentos) }} h</div>
+          </div>
+          {% set total_plan = item.total_horas_etapas + item.total_horas_tarefas %}
+          {% if total_plan > 0 %}
+            <div class="resumo-item">
+              <div class="resumo-label">% Utilização:</div>
+              <div class="resumo-value">{{ "%.1f"|format(item.total_horas_apontamentos / total_plan * 100) }}%</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <p>Nenhum responsável com alocação.</p>
+    <p style="font-size: 12px; margin-top: 10px;">Atribua responsáveis às etapas ou tarefas para gerar o relatório.</p>
+  </div>
+{% endif %}
+
+<!-- Botões de Ação -->
+<div class="button-group">
+  <a href="/relatorios/alocacao" class="btn btn-primary">← Voltar ao Relatório Consolidado</a>
+  <a href="/relatorios" class="btn btn-secondary">← Voltar aos Relatórios</a>
+</div>
+
+{% endblock %}

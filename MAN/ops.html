@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <h2>Ordens de Produção</h2>
+    <a href="/ops/nova"><button>+ Nova OP</button></a>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>OP</th><th>Obra</th><th>Produto</th><th>Qtd</th><th>%</th><th>Status</th><th>Prev. Início</th><th>Prev. Fim</th></tr>
+    {% for op in ops %}
+      <tr>
+        <td><a href="/ops/{{op.id}}">{{op.numero}}</a></td>
+        <td>{{op.obra.codigo}}</td>
+        <td>{{op.produto}}</td>
+        <td>{{op.quantidade}}</td>
+        <td>{{op.percentual}}%</td>
+        <td><span class="badge">{{op.status}}</span></td>
+        <td>{{ op.prev_inicio.strftime('%d/%m/%Y') if op.prev_inicio else '' }}</td>
+        <td>{{ op.prev_fim.strftime('%d/%m/%Y') if op.prev_fim else '' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

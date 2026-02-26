@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apresentação - PCP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='sistema.css') }}">
+    <script src="{{ url_for('static', filename='colorir-status.js') }}"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .header {
+            background-color: #003d7a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .tela {
+            display: none;
+            padding: 20px;
+            height: 100%;
+            overflow: auto;
+        }
+        
+        .tela.ativo {
+            display: block;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .dashboard-card h3 {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .dashboard-card .number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #003d7a;
+            margin: 10px 0;
+        }
+        
+        .status-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-badge {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin-top: 20px;
+        }
+        
+        th {
+            background-color: #003d7a;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 13px;
+        }
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .footer {
+            background-color: #333;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        #hora {
+            font-weight: bold;
+        }
+        
+        #contador {
+            background-color: #003d7a;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .indicador {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">Produção NTC</div>
+        
+        <div class="content">
+            <!-- DASHBOARD -->
+            <div class="tela ativo" id="tela-dashboard">
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>Obras</h3>
+                        <div class="number" id="total-obras">{{ total_obras }}</div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>OPs</h3>
+                        <div class="number" id="total-ops">{{ total_ops }}</div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Tarefas</h3>
+                        <div class="number" id="total-tarefas">{{ tarefas|length }}</div>
+                    </div>
+                </div>
+                
+                <h3>Status das Obras</h3>
+                <div class="status-row">
+                    <div class="status-badge">🔵 Abertas: {{ obras_abertas }}</div>
+                    <div class="status-badge">🟡 Em Execução: {{ obras_em_exec }}</div>
+                    <div class="status-badge">🟢 Concluídas: {{ obras_concluidas }}</div>
+                    <div class="status-badge">🔴 Atrasadas: {{ obras_atrasadas }}</div>
+                </div>
+                
+                <h3>Status das OPs</h3>
+                <div class="status-row">
+                    <div class="status-badge">🔵 Abertas: {{ ops_abertas }}</div>
+                    <div class="status-badge">🟡 Em Produção: {{ ops_em_prod }}</div>
+                    <div class="status-badge">🟢 Concluídas: {{ ops_concluidas }}</div>
+                    <div class="status-badge">🔴 Atrasadas: {{ ops_atrasadas }}</div>
+                </div>
+                
+                <h3>Produtos em Produção</h3>
+                <div class="status-row">
+                    <div class="status-badge">{{ produtos_str }}</div>
+                </div>
+            </div>
+            
+            <!-- OBRAS -->
+            <div class="tela" id="tela-obras">
+                <h2>Obras</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Cliente</th>
+                            <th>Status</th>
+                            <th>% Obra</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-obras">
+                        {% for obra in obras %}
+                        <tr>
+                            <td>{{ obra.codigo }}</td>
+                            <td>{{ obra.nome }}</td>
+                            <td>{{ obra.cliente }}</td>
+                            <td>{{ obra.status }}</td>
+                            <td style="background: #fffbf0; font-size: 16px; font-weight: bold;">{{ obra.percentual }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="indicador" id="indicador-obras">Pagina 1 de 1</div>
+            </div>
+            
+            <!-- OPs -->
+            <div class="tela" id="tela-ops">
+                <h2>OPs</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>OP</th>
+                            <th>Obra</th>
+                            <th>Cliente</th>
+                            <th>Produto</th>
+                            <th>Qtd</th>
+                            <th>%</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-ops">
+                        {% for op in ops %}
+                        <tr>
+                            <td>{{ op.numero }}</td>
+                            <td>{{ op.obra_nome }}</td>
+                            <td>{{ op.cliente }}</td>
+                            <td>{{ op.produto }}</td>
+                            <td>{{ op.quantidade }}</td>
+                            <td style="background: #ecf8fb; font-size: 16px; font-weight: bold;">{{ op.percentual }}%</td>
+                            <td>{{ op.status }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="indicador" id="indicador-ops">Pagina 1 de 1</div>
+            </div>
+            
+            <!-- TAREFAS ATRASADAS -->
+            <div class="tela" id="tela-tarefas">
+                <h2>Tarefas Atrasadas</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarefa</th>
+                            <th>Obra</th>
+                            <th>Produto</th>
+                            <th>Responsável</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Horas</th>
+                            <th>Status</th>
+                            <th>Justificativa</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-tarefas">
+                        {% for tarefa in tarefas %}
+                        <tr>
+                            <td>{{ tarefa.titulo }}</td>
+                            <td>{{ tarefa.obra_nome }}</td>
+                            <td>{{ tarefa.produto }}</td>
+                            <td>{{ tarefa.responsavel_nome }}</td>
+                            <td style="font-size: 16px;">{{ tarefa.data_inicio_prev }}</td>
+                            <td style="font-size: 16px;">{{ tarefa.data_fim_prev }}</td>
+                            <td style="font-size: 16px;">{{ tarefa.horas_previstas }}h</td>
+                            <td><span class="badge" style="background-color: #f44336; color: white;">{{ tarefa.status }}</span></td>
+                            <td>{{ tarefa.justificativa_pausa }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="indicador" id="indicador-tarefas">Pagina 1 de 1</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <span id="hora">00:00:00</span>
+            <span id="contador">6s</span>
+        </div>
+    </div>
+    
+    <!-- Contador -->
+    <div class="contador" id="contador">6s</div>
+    
+    <script>
+        const INTERVALO = 6000;
+        let sequencia = [];
+        let telaAtualIdx = 0;
+        let contadorTempo = 6;
+        
+        // Dados de paginação
+        let paginaObras = 0;
+        let paginaOps = 0;
+        let paginaTarefas = 0;
+        const LINHAS_POR_PAGINA = 10;
+        
+        // Construir sequência de telas
+        function construirSequencia() {
+            sequencia = ['tela-dashboard'];
+            
+            // Contar páginas de obras
+            const tbodyObras = document.getElementById('tbody-obras');
+            const linhasObras = tbodyObras ? tbodyObras.querySelectorAll('tr').length : 0;
+            const paginasObras = Math.ceil(linhasObras / LINHAS_POR_PAGINA);
+            
+            for (let i = 0; i < paginasObras; i++) {
+                sequencia.push('tela-obras');
+            }
+            
+            // Contar páginas de OPs
+            const tbodyOps = document.getElementById('tbody-ops');
+            const linhasOps = tbodyOps ? tbodyOps.querySelectorAll('tr').length : 0;
+            const paginasOps = Math.ceil(linhasOps / LINHAS_POR_PAGINA);
+            
+            for (let i = 0; i < paginasOps; i++) {
+                sequencia.push('tela-ops');
+            }
+            
+            // Contar páginas de tarefas
+            const tbodyTarefas = document.getElementById('tbody-tarefas');
+            const linhasTarefas = tbodyTarefas ? tbodyTarefas.querySelectorAll('tr').length : 0;
+            const paginasTarefas = Math.ceil(linhasTarefas / LINHAS_POR_PAGINA);
+            
+            for (let i = 0; i < paginasTarefas; i++) {
+                sequencia.push('tela-tarefas');
+            }
+        }
+        
+        // Atualizar hora
+        function atualizarHora() {
+            const agora = new Date();
+            const hora = agora.toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+            document.getElementById('hora').textContent = hora;
+        }
+        
+        // Paginar tabelas
+        function paginarTabela(tbody) {
+            const linhas = tbody.querySelectorAll('tr');
+            const totalLinhas = linhas.length;
+            const totalPaginas = Math.ceil(totalLinhas / LINHAS_POR_PAGINA);
+            
+            linhas.forEach((linha) => {
+                linha.style.display = 'none';
+            });
+            
+            let paginaAtual = 0;
+            if (tbody.id === 'tbody-obras') {
+                paginaAtual = paginaObras % totalPaginas;
+            } else if (tbody.id === 'tbody-ops') {
+                paginaAtual = paginaOps % totalPaginas;
+            } else if (tbody.id === 'tbody-tarefas') {
+                paginaAtual = paginaTarefas % totalPaginas;
+            }
+            
+            const inicio = paginaAtual * LINHAS_POR_PAGINA;
+            const fim = inicio + LINHAS_POR_PAGINA;
+            
+            for (let i = inicio; i < fim && i < totalLinhas; i++) {
+                linhas[i].style.display = 'table-row';
+            }
+            
+            return { paginaAtual: paginaAtual + 1, totalPaginas };
+        }
+        
+        // Mudar tela
+        function mudarTela() {
+            const telaId = sequencia[telaAtualIdx];
+            
+            ['tela-dashboard', 'tela-obras', 'tela-tarefas', 'tela-ops'].forEach(tela => {
+                const el = document.getElementById(tela);
+                if (el) el.classList.remove('ativo');
+            });
+            if (document.getElementById(telaId)) {
+                document.getElementById(telaId).classList.add('ativo');
+            }
+            
+            if (telaId === 'tela-obras') {
+                const tbody = document.getElementById('tbody-obras');
+                if (tbody) {
+                    const { paginaAtual, totalPaginas } = paginarTabela(tbody);
+                    document.getElementById('indicador-obras').textContent = 'Pagina ' + paginaAtual + ' de ' + totalPaginas;
+                }
+                paginaObras++;
+            } else if (telaId === 'tela-ops') {
+                const tbody = document.getElementById('tbody-ops');
+                if (tbody) {
+                    const { paginaAtual, totalPaginas } = paginarTabela(tbody);
+                    document.getElementById('indicador-ops').textContent = 'Pagina ' + paginaAtual + ' de ' + totalPaginas;
+                }
+                paginaOps++;
+            } else if (telaId === 'tela-tarefas') {
+                const tbody = document.getElementById('tbody-tarefas');
+                if (tbody) {
+                    const { paginaAtual, totalPaginas } = paginarTabela(tbody);
+                    document.getElementById('indicador-tarefas').textContent = 'Pagina ' + paginaAtual + ' de ' + totalPaginas;
+                    
+                    // Se é a última página de tarefas, recarregar após 6 segundos
+                    if (paginaAtual === totalPaginas && totalPaginas > 0) {
+                        setTimeout(function() {
+                            location.reload();
+                        }, INTERVALO);
+                    }
+                }
+                paginaTarefas++;
+            }
+            
+            contadorTempo = 6;
+            document.getElementById('contador').textContent = contadorTempo + 's';
+            telaAtualIdx = (telaAtualIdx + 1) % sequencia.length;
+        }
+        
+        function atualizarContador() {
+            contadorTempo--;
+            document.getElementById('contador').textContent = contadorTempo + 's';
+        }
+        
+        window.addEventListener('load', function() {
+            construirSequencia();
+            atualizarHora();
+            setInterval(atualizarHora, 1000);
+            setInterval(atualizarContador, 1000);
+            setInterval(mudarTela, INTERVALO);
+        });
+    </script>
+</body>
+</html>

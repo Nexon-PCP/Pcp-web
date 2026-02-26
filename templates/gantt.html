@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráfico de Gantt - PCP Industrial</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .gantt-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .gantt-chart {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .gantt-labels {
+            width: 250px;
+            border-right: 2px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .gantt-bars {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .gantt-row {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .gantt-row.op-row {
+            font-weight: 600;
+            background-color: #f9f9f9;
+            height: 45px;
+            margin-bottom: 2px;
+        }
+
+        .gantt-row.etapa-row {
+            font-size: 13px;
+            margin-left: 20px;
+            height: 35px;
+        }
+
+        .label {
+            width: 250px;
+            padding: 5px 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        .bar-container {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .bar {
+            height: 25px;
+            border-radius: 3px;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .bar:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .bar.aberta {
+            background: linear-gradient(90deg, #ffc107, #ffb300);
+        }
+
+        .bar.planejado {
+            background: linear-gradient(90deg, #17a2b8, #138496);
+        }
+
+        .bar.em-producao,
+        .bar.execucao {
+            background: linear-gradient(90deg, #007bff, #0056b3);
+        }
+
+        .bar.concluida {
+            background: linear-gradient(90deg, #28a745, #1e7e34);
+        }
+
+        .bar.atrasada {
+            background: linear-gradient(90deg, #dc3545, #bd2130);
+        }
+
+        .bar.progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .timeline {
+            display: flex;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            border-bottom: 2px solid #ddd;
+            background: #f9f9f9;
+        }
+
+        .timeline-label {
+            position: absolute;
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .legend {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            display: none;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            .gantt-labels {
+                width: 150px;
+            }
+
+            .label {
+                width: 150px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Gráfico de Gantt</h1>
+            <p>Visualize o cronograma de OPs e Etapas de Produção</p>
+        </header>
+
+        <!-- FILTROS -->
+        <form method="GET" class="filters">
+            <div class="filter-group">
+                <label for="obra_id">Filtrar por Obra:</label>
+                <select id="obra_id" name="obra_id">
+                    <option value="">-- Todas as Obras --</option>
+                    {% for obra in obras %}
+                    <option value="{{ obra.id }}" {% if obra.id == obra_id %}selected{% endif %}>
+                        {{ obra.codigo }} - {{ obra.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="data_inicio">Data Início:</label>
+                <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}">
+            </div>
+
+            <div class="filter-group">
+                <label for="data_fim">Data Fim:</label>
+                <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}">
+            </div>
+
+            <div class="filter-group">
+                <button type="submit" class="btn btn-primary">🔍 Filtrar</button>
+                <a href="{{ url_for('rel_gantt') }}" class="btn btn-secondary" style="text-decoration: none; text-align: center; margin-top: 5px;">↻ Limpar</a>
+            </div>
+        </form>
+
+        <!-- GRÁFICO DE GANTT -->
+        <div class="gantt-container">
+            {% if gantt_data %}
+            <div class="gantt-chart" id="ganttChart">
+                <div class="gantt-labels" id="ganttLabels"></div>
+                <div class="gantt-bars" id="ganttBars"></div>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 40px; color: #999;">
+                <p>Nenhuma OP encontrada para o período selecionado.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- LEGENDA -->
+        <div class="legend">
+            <h3>📋 Legenda de Status</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #ffc107, #ffb300);"></div>
+                    <span>Aberta</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #17a2b8, #138496);"></div>
+                    <span>Planejada</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #007bff, #0056b3);"></div>
+                    <span>Em Produção</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #28a745, #1e7e34);"></div>
+                    <span>Concluída</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #dc3545, #bd2130);"></div>
+                    <span>Atrasada</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const ganttData = {{ gantt_data|tojson }};
+        const dataInicio = new Date('{{ data_inicio }}');
+        const dataFim = new Date('{{ data_fim }}');
+
+        function renderGantt() {
+            const labelsDiv = document.getElementById('ganttLabels');
+            const barsDiv = document.getElementById('ganttBars');
+            
+            labelsDiv.innerHTML = '';
+            barsDiv.innerHTML = '';
+
+            // Calcular largura do gráfico baseado no período
+            const diasTotal = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
+            const pixelsPorDia = 2; // pixels por dia
+            const larguraTotal = diasTotal * pixelsPorDia;
+
+            // Adicionar timeline
+            const timeline = document.createElement('div');
+            timeline.className = 'timeline';
+            timeline.style.width = larguraTotal + 'px';
+            
+            // Adicionar marcas de data
+            for (let i = 0; i <= diasTotal; i += 7) {
+                const data = new Date(dataInicio);
+                data.setDate(data.getDate() + i);
+                const label = document.createElement('div');
+                label.className = 'timeline-label';
+                label.style.left = (i * pixelsPorDia) + 'px';
+                label.textContent = data.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+                timeline.appendChild(label);
+            }
+            
+            barsDiv.appendChild(timeline);
+
+            // Renderizar OPs e Etapas
+            ganttData.forEach(op => {
+                // Linha da OP
+                const opLabelDiv = document.createElement('div');
+                opLabelDiv.className = 'gantt-row op-row';
+                
+                const opLabel = document.createElement('div');
+                opLabel.className = 'label';
+                opLabel.textContent = op.nome;
+                opLabel.title = op.nome;
+                opLabelDiv.appendChild(opLabel);
+                labelsDiv.appendChild(opLabelDiv);
+
+                const opBarDiv = document.createElement('div');
+                opBarDiv.className = 'gantt-row op-row';
+                
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+                barContainer.style.width = larguraTotal + 'px';
+
+                // Calcular posição e largura da barra da OP
+                const opInicio = new Date(op.inicio);
+                const opFim = new Date(op.fim);
+                const posicao = (opInicio - dataInicio) / (1000 * 60 * 60 * 24) * pixelsPorDia;
+                const largura = (opFim - opInicio) / (1000 * 60 * 60 * 24) * pixelsPorDia;
+
+                const bar = document.createElement('div');
+                bar.className = `bar ${op.status.toLowerCase().replace(' ', '-')}`;
+                bar.style.left = posicao + 'px';
+                bar.style.width = Math.max(largura, 20) + 'px';
+                bar.textContent = op.percentual.toFixed(0) + '%';
+                
+                bar.addEventListener('mouseenter', (e) => {
+                    showTooltip(e, `${op.nome} (${op.percentual.toFixed(1)}%)`);
+                });
+                bar.addEventListener('mouseleave', hideTooltip);
+
+                barContainer.appendChild(bar);
+                opBarDiv.appendChild(barContainer);
+                barsDiv.appendChild(opBarDiv);
+
+                // Linhas das Etapas
+                op.etapas.forEach(etapa => {
+                    const etapaLabelDiv = document.createElement('div');
+                    etapaLabelDiv.className = 'gantt-row etapa-row';
+                    
+                    const etapaLabel = document.createElement('div');
+                    etapaLabel.className = 'label';
+                    etapaLabel.textContent = '└─ ' + etapa.nome;
+                    etapaLabel.title = etapa.nome;
+                    etapaLabelDiv.appendChild(etapaLabel);
+                    labelsDiv.appendChild(etapaLabelDiv);
+
+                    const etapaBarDiv = document.createElement('div');
+                    etapaBarDiv.className = 'gantt-row etapa-row';
+                    
+                    const etapaBarContainer = document.createElement('div');
+                    etapaBarContainer.className = 'bar-container';
+                    etapaBarContainer.style.width = larguraTotal + 'px';
+
+                    // Calcular posição e largura da barra da Etapa
+                    const etapaInicio = new Date(etapa.inicio);
+                    const etapaFim = new Date(etapa.fim);
+                    const etapaPosicao = (etapaInicio - dataInicio) / (1000 * 60 * 60 * 24) * pixelsPorDia;
+                    const etapaLargura = (etapaFim - etapaInicio) / (1000 * 60 * 60 * 24) * pixelsPorDia;
+
+                    const etapaBar = document.createElement('div');
+                    etapaBar.className = `bar ${etapa.status.toLowerCase().replace(' ', '-')}`;
+                    etapaBar.style.left = etapaPosicao + 'px';
+                    etapaBar.style.width = Math.max(etapaLargura, 15) + 'px';
+                    etapaBar.textContent = etapa.percentual.toFixed(0) + '%';
+                    
+                    etapaBar.addEventListener('mouseenter', (e) => {
+                        showTooltip(e, `${etapa.nome} - ${etapa.responsavel} (${etapa.percentual.toFixed(1)}%)`);
+                    });
+                    etapaBar.addEventListener('mouseleave', hideTooltip);
+
+                    etapaBarContainer.appendChild(etapaBar);
+                    etapaBarDiv.appendChild(etapaBarContainer);
+                    barsDiv.appendChild(etapaBarDiv);
+                });
+            });
+        }
+
+        function showTooltip(event, text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY + 10) + 'px';
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        // Renderizar ao carregar
+        renderGantt();
+
+        // Atualizar ao redimensionar
+        window.addEventListener('resize', renderGantt);
+    </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <h2>Obras</h2>
+    <a href="{{ url_for('obra_nova') }}"><button type="button">+ Nova Obra</button></a>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card">
+  <h3 style="margin-top:0">Filtros</h3>
+  <form method="get" action="/obras" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end;">
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Cliente</label>
+      <input type="text" name="cliente" placeholder="Filtrar por cliente" value="{{ request.args.get('cliente', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Início (De)</label>
+      <input type="date" name="data_inicio_de" value="{{ request.args.get('data_inicio_de', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Início (Até)</label>
+      <input type="date" name="data_inicio_ate" value="{{ request.args.get('data_inicio_ate', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Fim (De)</label>
+      <input type="date" name="data_fim_de" value="{{ request.args.get('data_fim_de', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Data Fim (Até)</label>
+      <input type="date" name="data_fim_ate" value="{{ request.args.get('data_fim_ate', '') }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+
+    <div>
+      <label style="font-size: 12px; font-weight: bold; color: #666;">Status</label>
+      <select name="status" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        <option value="">-- Todos --</option>
+        <option value="ATIVA" {% if request.args.get('status') == 'ATIVA' %}selected{% endif %}>Aberta</option>
+        <option value="EM_EXECUCAO" {% if request.args.get('status') == 'EM_EXECUCAO' %}selected{% endif %}>EM_EXECUCAO</option>
+        <option value="CONCLUIDA" {% if request.args.get('status') == 'CONCLUIDA' %}selected{% endif %}>CONCLUIDA</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" style="background-color: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex: 1;">🔍 Filtrar</button>
+      <a href="/obras" style="background-color: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; display: flex; align-items: center; justify-content: center; flex: 1;">Limpar</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <style>
+    .obras-table { width: 100%; }
+    .obras-table th {
+      font-size: 16px;
+      padding: 8px 10px;
+    }
+    .obras-table td {
+      font-size: 16px;
+      padding: 6px 10px;
+    }
+    .obras-table th:nth-child(3),
+    .obras-table td:nth-child(3) { min-width: 180px; }
+    .obras-table th:nth-child(4),
+    .obras-table td:nth-child(4) { min-width: 160px; }
+    .obras-table th:nth-child(10),
+    .obras-table td:nth-child(10) { min-width: 250px; }
+  </style>
+  <table class="obras-table">
+    <tr>
+        <th>Código</th>
+        <th>Nome</th>
+        <th>Cliente</th>
+        <th>Status</th>
+        <th>% Obra</th>
+        <th colspan="2" style="text-align: center; background: #fff3cd;">🔧 Corte/Dobra</th>
+        <th colspan="2" style="text-align: center; background: #d1ecf1;">⚙️ Montagem Eletromecanica</th>
+        <th style="width:400px">Produtos</th>
+        <th style="width:180px">Ações</th>
+      </tr>
+      <tr>
+        <th colspan="5"></th>
+        <th style="background: #fff3cd; font-size: 12px;">
+          <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=corte_dobra_inicio&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_inicio' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+            Início
+            {% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_inicio' %}↑{% elif coluna_ordem == 'corte_dobra_inicio' %}↓{% endif %}
+          </a>
+        </th>
+        <th style="background: #fff3cd; font-size: 12px;">
+          <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=corte_dobra_fim&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_fim' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+            Fim
+            {% if ordem_atual == 'asc' and coluna_ordem == 'corte_dobra_fim' %}↑{% elif coluna_ordem == 'corte_dobra_fim' %}↓{% endif %}
+          </a>
+        </th>
+        <th style="background: #d1ecf1; font-size: 12px;">
+          <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=montagem_eletro_inicio&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_inicio' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+            Início
+            {% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_inicio' %}↑{% elif coluna_ordem == 'montagem_eletro_inicio' %}↓{% endif %}
+          </a>
+        </th>
+        <th style="background: #d1ecf1; font-size: 12px;">
+          <a href="?{% for key, value in request.args.items() %}{% if key != 'ordem' and key != 'coluna_ordem' %}{{ key }}={{ value }}&{% endif %}{% endfor %}coluna_ordem=montagem_eletro_fim&ordem={% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_fim' %}desc{% else %}asc{% endif %}" style="text-decoration: none; color: inherit; cursor: pointer;">
+            Fim
+            {% if ordem_atual == 'asc' and coluna_ordem == 'montagem_eletro_fim' %}↑{% elif coluna_ordem == 'montagem_eletro_fim' %}↓{% endif %}
+          </a>
+        </th>
+        <th colspan="2"></th>
+    </tr>
+    {% for o in obras %}
+      <tr>
+          <td>{{ o.codigo }}</td>
+          <td>{{ o.nome }}</td>
+          <td>{{ o.cliente or "" }}</td>
+          <td><span class="badge" style="font-size: 14px !important;">{% if o.status == 'ATIVA' %}Aberta{% else %}{{ o.status }}{% endif %}</span></td>
+          <td style="font-weight: bold; color: #d97706; text-align: center;">{% set ops_obra = o.ops %}
+            {% if ops_obra %}
+              {% set percentual_obra = (ops_obra|map(attribute='percentual_calc')|sum) / (ops_obra|length) %}
+              {{ (percentual_obra|round|int) }}%
+            {% else %}
+              0%
+            {% endif %}
+          </td>
+          <td style="background: #fffbf0; font-size: 16px;">{{ o.corte_dobra_inicio.strftime("%d/%m/%Y") if o.corte_dobra_inicio else "-" }}</td>
+          <td style="background: #fffbf0; font-size: 16px;">{{ o.corte_dobra_fim.strftime("%d/%m/%Y") if o.corte_dobra_fim else "-" }}</td>
+          <td style="background: #ecf8fb; font-size: 16px;">{{ o.montagem_eletro_inicio.strftime("%d/%m/%Y") if o.montagem_eletro_inicio else "-" }}</td>
+          <td style="background: #ecf8fb; font-size: 16px;">{{ o.montagem_eletro_fim.strftime("%d/%m/%Y") if o.montagem_eletro_fim else "-" }}</td>
+
+          <td style="width:400px;">
+            {% if o.produtos and (o.produtos|length > 0) %}
+              {% for item in o.produtos %}
+                {{ item.produto.nome }} ({{ item.quantidade }}){% if not loop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+
+          <td>
+            <a href="{{ url_for('detalhe_obra', obra_id=o.id) }}">
+              <button type="button">Editar</button>
+            </a>
+
+            <form method="post"
+                  action="{{ url_for('obra_excluir', obra_id=o.id) }}"
+                  style="display:inline"
+                  onsubmit="return confirm('Tem certeza que deseja excluir esta obra?');">
+              <button type="submit">Excluir</button>
+            </form>
+          </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if not obras %}
+    <p style="text-align: center; color: #999; padding: 20px;">Nenhuma Obra encontrada com os filtros aplicados.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
