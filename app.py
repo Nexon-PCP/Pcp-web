@@ -3,8 +3,12 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 import calendar
+import os
 
-app = Flask(__name__, template_folder='templates', static_folder='static')
+app = Flask(__name__, 
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
+    static_folder=os.path.join(os.path.dirname(__file__), 'static')
+)
 
 ETAPAS_FIXAS = ["CORTE", "DOBRA", "PINTURA", "CALDEIRARIA", "MONTAGEM", "START UP"]
 
