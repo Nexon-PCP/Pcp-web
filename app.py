@@ -3,12 +3,25 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 import calendar
+import os
 
-app = Flask(__name__)
+# Detectar banco de dados: PostgreSQL (Railway) ou SQLite (local)
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app = Flask(__name__, 
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
+    static_folder=os.path.join(os.path.dirname(__file__), 'static')
+)
 
 ETAPAS_FIXAS = ["CORTE", "DOBRA", "PINTURA", "CALDEIRARIA", "MONTAGEM", "START UP"]
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pcp.db"
+# Usar PostgreSQL se DATABASE_URL estiver definida (Railway), senão SQLite (local)
+if database_url:
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pcp.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "pcp-secret"
 app.config["SESSION_COOKIE_SECURE"] = False  # False para desenvolvimento local
@@ -192,7 +205,7 @@ class OP(db.Model):
 
     @property
     def percentual_calc(self):
-        """Calcula percentual baseado em tarefas CONCLUIDO / total de tarefas"""
+        """Calcula percentual baseado em horas de tarefas CONCLUIDO / horas totais"""
         # Buscar todas as tarefas da OP através de suas etapas
         todas_tarefas = []
         for etapa in self.etapas:
@@ -202,15 +215,20 @@ class OP(db.Model):
         if not todas_tarefas:
             return 0.0
         
-        # Contar tarefas com status CONCLUIDO
-        tarefas_concluidas = sum(
-            1 for tarefa in todas_tarefas 
+        # Somar horas previstas totais e horas de tarefas concluídas
+        horas_totais = sum(tarefa.horas_previstas for tarefa in todas_tarefas)
+        horas_concluidas = sum(
+            tarefa.horas_previstas for tarefa in todas_tarefas 
             if tarefa.status == "CONCLUIDO"
         )
         
-        # Calcular percentual: tarefas concluídas / total de tarefas * 100
-        percentual = (tarefas_concluidas / len(todas_tarefas)) * 100
-        return round(percentual, 2)
+        # Se não há horas previstas, retornar 0
+        if horas_totais == 0:
+            return 0.0
+        
+        # Calcular percentual: horas de tarefas concluídas / horas totais * 100
+        percentual = (horas_concluidas / horas_totais) * 100
+        return round(percentual)
 
     @property
     def status_calc(self):
@@ -367,6 +385,30 @@ class Tarefa(db.Model):
     responsavel = db.relationship("Operador", backref=db.backref("tarefas", lazy=True))
     
     @property
+    def status_calculado(self):
+        """Retorna o status calculado baseado na data de fim"""
+        # Se a tarefa foi concluída, mantém o status CONCLUIDO
+        if self.status == "CONCLUIDO":
+            return "CONCLUIDO"
+        
+        # Se a tarefa está em execução, mantém o status EM_EXECUCAO
+        if self.status == "EM_EXECUCAO":
+            return "EM_EXECUCAO"
+        
+        # Se a tarefa está pausada, mantém o status PAUSADO
+        if self.status == "PAUSADO":
+            return "PAUSADO"
+        
+        # Se tem data de fim prevista, verifica se está atrasada
+        if self.data_fim_prev:
+            from datetime import date
+            if date.today() > self.data_fim_prev:
+                return "ATRASADA"
+        
+        # Caso contrário, retorna PLANEJADO
+        return "PLANEJADO"
+    
+    @property
     def percentual(self):
         """Retorna o percentual de conclusão da tarefa"""
         if self.status == "CONCLUIDO":
@@ -513,7 +555,8 @@ def dashboard():
     obras_abertas = sum(1 for o in obras if o.status == "ATIVA")
     obras_em_exec = sum(1 for o in obras if o.status == "EM_EXECUCAO")
     obras_concluidas = sum(1 for o in obras if o.status == "CONCLUIDA")
-    obras_atrasadas = sum(1 for o in obras if o.status == "ATRASADA")
+    # Obra atrasada: data atual > montagem_eletro_fim E status != CONCLUIDA
+    obras_atrasadas = sum(1 for o in obras if o.status != "CONCLUIDA" and o.montagem_eletro_fim and date.today() > o.montagem_eletro_fim)
 
     ap_total = Apontamento.query.count()
     ap_and = Apontamento.query.filter_by(status="EM_ANDAMENTO").count()
@@ -938,8 +981,19 @@ def op_criar():
 
 @app.route("/ops/<int:op_id>")
 def detalhe_op(op_id):
+    from datetime import datetime
     op = OP.query.get_or_404(op_id)
     operadores = Operador.query.filter_by(ativo=True).order_by(Operador.nome.asc()).all()
+    
+    # Verificar e atualizar status de tarefas atrasadas
+    for etapa in op.etapas:
+        for tarefa in etapa.tarefas:
+            # Se data_fim_prev passou e status não é CONCLUIDO, marcar como ATRASADA
+            if tarefa.data_fim_prev and tarefa.data_fim_prev < datetime.now().date():
+                if tarefa.status != 'CONCLUIDO':
+                    tarefa.status = 'ATRASADA'
+    db.session.commit()
+    
     return render_template("op_detail.html", op=op, operadores=operadores)
 
 
@@ -1343,6 +1397,9 @@ def tarefa_atualizar(tarefa_id):
     elif acao == "concluir":
         tarefa.data_fim_real = datetime.now()
         tarefa.status = "CONCLUIDO"
+        # Preencher horas_realizadas com horas_previstas quando concluir
+        if tarefa.horas_realizadas == 0:
+            tarefa.horas_realizadas = tarefa.horas_previstas
         db.session.flush()
         
         op = tarefa.etapa.op
@@ -2761,7 +2818,137 @@ def criar_usuarios_padrao():
 @app.route("/apresentacao")
 def apresentacao():
     """Modo apresentação - tela cheia que muda a cada 10 segundos"""
-    return render_template("apresentacao.html")
+    # ===== DASHBOARD =====
+    obras_total = Obra.query.count()
+    obras_abertas = Obra.query.filter_by(status="ATIVA").count()
+    obras_em_exec = Obra.query.filter_by(status="EM_EXECUCAO").count()
+    obras_concluidas = Obra.query.filter_by(status="CONCLUIDA").count()
+    obras_atrasadas = Obra.query.filter_by(status="ATRASADA").count()
+    
+    ops_total = OP.query.count()
+    abertas = OP.query.filter_by(status="ABERTA").count()
+    em_exec = OP.query.filter_by(status="EM_EXECUCAO").count()
+    atrasadas = OP.query.filter_by(status="ATRASADA").count()
+    concluidas = OP.query.filter_by(status="CONCLUIDA").count()
+    
+    tarefas_total = Tarefa.query.count()
+    ap_total = tarefas_total
+    
+    from sqlalchemy import func
+    produtos_count = db.session.query(
+        Produto.nome,
+        func.sum(ObraProduto.quantidade).label('total')
+    ).join(ObraProduto).group_by(Produto.nome).order_by(func.sum(ObraProduto.quantidade).desc()).all()
+    
+    produtos_str = ', '.join([f"{p[0]} - {int(p[1])}" for p in produtos_count if p[1]])
+    
+    # ===== OBRAS =====
+    todas_obras = Obra.query.order_by(Obra.montagem_eletro_fim.asc()).all()
+    obras_list = []
+    for obra in todas_obras:
+        percentual_obra = 0
+        if obra.ops:
+            percentual_obra = sum(op.percentual_calc for op in obra.ops) / len(obra.ops)
+        obras_list.append({
+            'codigo': obra.codigo or 'N/A',
+            'nome': obra.nome or 'Sem nome',
+            'cliente': obra.cliente or 'N/A',
+            'status': obra.status or 'N/A',
+            'percentual': round(percentual_obra),
+            'corte_dobra_inicio': obra.corte_dobra_inicio.strftime('%d/%m/%Y') if obra.corte_dobra_inicio else '-',
+            'corte_dobra_fim': obra.corte_dobra_fim.strftime('%d/%m/%Y') if obra.corte_dobra_fim else '-',
+            'montagem_eletro_inicio': obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if obra.montagem_eletro_inicio else '-',
+            'montagem_eletro_fim': obra.montagem_eletro_fim.strftime('%d/%m/%Y') if obra.montagem_eletro_fim else '-',
+            'produtos': ', '.join([f"{p.produto.nome}({p.quantidade})" for p in obra.produtos]) if obra.produtos else '-'
+        })
+    
+    # ===== TAREFAS ATRASADAS =====
+    from datetime import datetime
+    from datetime import date as date_module
+    tarefas_atrasadas = Tarefa.query.filter(
+        Tarefa.data_fim_prev < date_module.today(),
+        Tarefa.status != 'CONCLUIDO'
+    ).order_by(Tarefa.data_fim_prev.asc()).all()
+    
+    tarefas_list = []
+    for tarefa in tarefas_atrasadas:
+        responsavel_nome = 'N/A'
+        if tarefa.responsavel:
+            responsavel_nome = tarefa.responsavel.nome if hasattr(tarefa.responsavel, 'nome') else str(tarefa.responsavel)
+        
+        # Obter informacoes da obra e produto
+        obra_nome = 'N/A'
+        produto = 'N/A'
+        montagem_eletro_inicio = '-'
+        montagem_eletro_fim = '-'
+        if tarefa.etapa and tarefa.etapa.op and tarefa.etapa.op.obra:
+            obra_nome = tarefa.etapa.op.obra.nome or 'N/A'
+            produto = tarefa.etapa.op.produto or 'N/A'
+            montagem_eletro_inicio = tarefa.etapa.op.obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if tarefa.etapa.op.obra.montagem_eletro_inicio else '-'
+            montagem_eletro_fim = tarefa.etapa.op.obra.montagem_eletro_fim.strftime('%d/%m/%Y') if tarefa.etapa.op.obra.montagem_eletro_fim else '-'
+        
+        # Calcular status dinamicamente: se data_fim_prev passou, marcar como ATRASADA
+        status_exibicao = tarefa.status or 'N/A'
+        if tarefa.data_fim_prev and tarefa.data_fim_prev < date_module.today() and tarefa.status != 'CONCLUIDO':
+            status_exibicao = 'ATRASADA'
+        
+        tarefas_list.append({
+            'titulo': tarefa.titulo or 'N/A',
+            'obra_nome': obra_nome,
+            'produto': produto,
+            'responsavel_nome': responsavel_nome,
+            'montagem_eletro_inicio': montagem_eletro_inicio,
+            'montagem_eletro_fim': montagem_eletro_fim,
+            'data_inicio_prev': tarefa.data_inicio_prev.strftime('%d/%m/%Y') if tarefa.data_inicio_prev else '-',
+            'data_fim_prev': tarefa.data_fim_prev.strftime('%d/%m/%Y') if tarefa.data_fim_prev else '-',
+            'horas_previstas': tarefa.horas_previstas or 0,
+            'status': status_exibicao,
+            'justificativa_pausa': tarefa.justificativa_pausa or '-'
+        })
+    
+    # ===== OPS =====
+    todas_ops = OP.query.join(Obra).order_by(Obra.montagem_eletro_fim.asc()).all()
+    ops_list = []
+    for op in todas_ops:
+        cliente = op.obra.cliente if op.obra else 'N/A'
+        obra_nome = op.obra.nome if op.obra else 'N/A'
+        obra_codigo = op.obra.codigo if op.obra else 'N/A'
+        corte_dobra_inicio = op.obra.corte_dobra_inicio.strftime('%d/%m/%Y') if op.obra and op.obra.corte_dobra_inicio else '-'
+        corte_dobra_fim = op.obra.corte_dobra_fim.strftime('%d/%m/%Y') if op.obra and op.obra.corte_dobra_fim else '-'
+        montagem_eletro_inicio = op.obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if op.obra and op.obra.montagem_eletro_inicio else '-'
+        montagem_eletro_fim = op.obra.montagem_eletro_fim.strftime('%d/%m/%Y') if op.obra and op.obra.montagem_eletro_fim else '-'
+        ops_list.append({
+            'numero': op.numero or f'OP{op.id}',
+            'obra_codigo': obra_codigo,
+            'cliente': cliente,
+            'obra_nome': obra_nome,
+            'produto': op.produto or 'Sem produto',
+            'quantidade': op.quantidade or 0,
+            'percentual': round(op.percentual_calc),
+            'status': op.status or 'N/A',
+            'corte_dobra_inicio': corte_dobra_inicio,
+            'corte_dobra_fim': corte_dobra_fim,
+            'montagem_eletro_inicio': montagem_eletro_inicio,
+            'montagem_eletro_fim': montagem_eletro_fim
+        })
+    
+    return render_template("apresentacao.html",
+        obras_total=obras_total,
+        obras_abertas=obras_abertas,
+        obras_em_exec=obras_em_exec,
+        obras_concluidas=obras_concluidas,
+        obras_atrasadas=obras_atrasadas,
+        ops_total=ops_total,
+        abertas=abertas,
+        em_exec=em_exec,
+        atrasadas=atrasadas,
+        concluidas=concluidas,
+        ap_total=ap_total,
+        produtos_str=produtos_str,
+        obras=obras_list,
+        ops=ops_list,
+        tarefas=tarefas_list
+    )
 
 
 @app.route("/api/apresentacao")
@@ -2816,7 +3003,7 @@ def api_apresentacao():
                 'montagem_eletro_inicio': obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if obra.montagem_eletro_inicio else '-',
                 'montagem_eletro_fim': obra.montagem_eletro_fim.strftime('%d/%m/%Y') if obra.montagem_eletro_fim else '-',
                 'produtos': ', '.join([f"{item.produto.nome} ({item.quantidade})" if item.produto else f"Produto {item.quantidade}" for item in obra.produtos]) if obra.produtos and len(obra.produtos) > 0 else '-',
-                'percentual': round(percentual_obra, 1)
+                'percentual': round(percentual_obra)
             })
         
         # ===== OPs =====
@@ -2840,12 +3027,47 @@ def api_apresentacao():
                 'obra_nome': obra_nome,
                 'produto': op.produto or 'Sem produto',
                 'quantidade': op.quantidade or 0,
-                'percentual': round(op.percentual_calc, 1),
+                'percentual': round(op.percentual_calc),
                 'status': op.status or 'N/A',
                 'corte_dobra_inicio': corte_dobra_inicio,
                 'corte_dobra_fim': corte_dobra_fim,
                 'montagem_eletro_inicio': montagem_eletro_inicio,
                 'montagem_eletro_fim': montagem_eletro_fim
+            })
+        
+        # ===== TAREFAS ATRASADAS =====
+        from datetime import datetime, date as date_module
+        tarefas_atrasadas = Tarefa.query.filter(
+            Tarefa.data_fim_prev < date_module.today(),
+            Tarefa.status != 'CONCLUIDO'
+        ).order_by(Tarefa.data_fim_prev.asc()).all()
+        
+        tarefas_list = []
+        for tarefa in tarefas_atrasadas:
+            responsavel_nome = 'N/A'
+            if tarefa.responsavel:
+                responsavel_nome = tarefa.responsavel.nome if hasattr(tarefa.responsavel, 'nome') else str(tarefa.responsavel)
+            
+            obra_nome = 'N/A'
+            produto = 'N/A'
+            if tarefa.etapa and tarefa.etapa.op and tarefa.etapa.op.obra:
+                obra_nome = tarefa.etapa.op.obra.nome or 'N/A'
+                produto = tarefa.etapa.op.produto or 'N/A'
+            
+            status_exibicao = tarefa.status or 'N/A'
+            if tarefa.data_fim_prev and tarefa.data_fim_prev < date_module.today() and tarefa.status != 'CONCLUIDO':
+                status_exibicao = 'ATRASADA'
+            
+            tarefas_list.append({
+                'titulo': tarefa.titulo or 'N/A',
+                'obra_nome': obra_nome,
+                'produto': produto,
+                'responsavel_nome': responsavel_nome,
+                'data_inicio_prev': tarefa.data_inicio_prev.strftime('%d/%m/%Y') if tarefa.data_inicio_prev else '-',
+                'data_fim_prev': tarefa.data_fim_prev.strftime('%d/%m/%Y') if tarefa.data_fim_prev else '-',
+                'horas_previstas': tarefa.horas_previstas or 0,
+                'status': status_exibicao,
+                'justificativa_pausa': tarefa.justificativa_pausa or '-'
             })
         
         return jsonify({
@@ -2869,7 +3091,8 @@ def api_apresentacao():
             'obras_pagina1': [o for o in obras_list if o in [obras_list[i] for i in range(min(10, len(obras_list)))]],
             'obras_pagina2': [o for o in obras_list if o in [obras_list[i] for i in range(10, min(20, len(obras_list)))]],
             'ops_pagina1': [op for op in ops_list if op in [ops_list[i] for i in range(min(10, len(ops_list)))]],
-            'ops_pagina2': [op for op in ops_list if op in [ops_list[i] for i in range(10, min(20, len(ops_list)))]]
+            'ops_pagina2': [op for op in ops_list if op in [ops_list[i] for i in range(10, min(20, len(ops_list)))]],
+            'tarefas': tarefas_list
         })
     
     except Exception as e:
@@ -2878,6 +3101,371 @@ def api_apresentacao():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+
+# ============================================
+# ROTAS API JSON PARA O APP MOBILE
+# ============================================
+
+# ============ API DASHBOARD ============
+@app.route("/api/dashboard")
+def api_dashboard():
+    """API que retorna métricas do dashboard"""
+    try:
+        # Métricas de Obras
+        total_obras = Obra.query.count()
+        obras_abertas = Obra.query.filter_by(status="ATIVA").count()
+        obras_em_exec = Obra.query.filter_by(status="EM_EXECUCAO").count()
+        obras_concluidas = Obra.query.filter_by(status="CONCLUIDA").count()
+        obras_atrasadas = Obra.query.filter_by(status="ATRASADA").count()
+        
+        # Métricas de OPs
+        total_ops = OP.query.count()
+        ops_aberta = OP.query.filter_by(status="ABERTA").count()
+        ops_em_prod = OP.query.filter_by(status="EM_PRODUCAO").count()
+        ops_atrasada = OP.query.filter_by(status="ATRASADA").count()
+        ops_concluida = OP.query.filter_by(status="CONCLUIDA").count()
+        
+        # Métricas de Apontamentos
+        apontamentos_finalizados = 0
+        
+        return jsonify({
+            "obras": {
+                "total": total_obras,
+                "abertas": obras_abertas,
+                "em_execucao": obras_em_exec,
+                "concluidas": obras_concluidas,
+                "atrasadas": obras_atrasadas
+            },
+            "ops": {
+                "total": total_ops,
+                "abertas": ops_aberta,
+                "em_producao": ops_em_prod,
+                "atrasadas": ops_atrasada,
+                "concluidas": ops_concluida
+            },
+            "apontamentos": {
+                "finalizados": apontamentos_finalizados
+            }
+        })
+    except Exception as e:
+        print(f"[ERRO API DASHBOARD] {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============ API OBRAS ============
+@app.route("/api/obras")
+def api_obras():
+    """API que retorna lista de obras"""
+    try:
+        obras = Obra.query.order_by(Obra.corte_dobra_inicio.asc()).all()
+        
+        resultado = []
+        for obra in obras:
+            # Calcular % de conclusão da obra
+            ops_obra = OP.query.filter_by(obra_id=obra.id).all()
+            if ops_obra:
+                percentual_obra = sum(op.percentual_calc for op in ops_obra) / len(ops_obra)
+            else:
+                percentual_obra = 0
+            
+            # Buscar produtos da obra
+            produtos_list = []
+            for op in obra.produtos:
+                if op.produto:
+                    produtos_list.append(f"{op.produto.nome} ({op.quantidade})")
+            produtos_str = ", ".join(produtos_list) if produtos_list else "-"
+            
+            resultado.append({
+                "id": obra.id,
+                "codigo": obra.codigo or "-",
+                "nome": obra.nome or "-",
+                "cliente": obra.cliente or "-",
+                "status": obra.status or "ATIVA",
+                "percentual": round(percentual_obra, 1),
+                "corte_dobra_inicio": obra.corte_dobra_inicio.strftime('%d/%m/%Y') if obra.corte_dobra_inicio else "-",
+                "corte_dobra_fim": obra.corte_dobra_fim.strftime('%d/%m/%Y') if obra.corte_dobra_fim else "-",
+                "montagem_eletro_inicio": obra.montagem_eletro_inicio.strftime('%d/%m/%Y') if obra.montagem_eletro_inicio else "-",
+                "montagem_eletro_fim": obra.montagem_eletro_fim.strftime('%d/%m/%Y') if obra.montagem_eletro_fim else "-",
+                "produtos": produtos_str
+            })
+        
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"[ERRO API OBRAS] {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============ API OPS ============
+@app.route("/api/ops")
+def api_ops():
+    """API que retorna lista de OPs"""
+    try:
+        ops = OP.query.order_by(OP.numero.desc()).all()
+        
+        resultado = []
+        for op in ops:
+            resultado.append({
+                "id": op.id,
+                "numero": op.numero,
+                "obra_id": op.obra_id,
+                "obra_codigo": op.obra.codigo if op.obra else "-",
+                "obra_nome": op.obra.nome if op.obra else "-",
+                "cliente": op.obra.cliente if op.obra else "-",
+                "produto": op.produto or "-",
+                "quantidade": op.quantidade or 1,
+                "percentual": round(op.percentual_calc, 1),
+                "status": op.status or "ABERTA",
+                "prev_inicio": op.prev_inicio.strftime('%d/%m/%Y') if op.prev_inicio else "-",
+                "prev_fim": op.prev_fim.strftime('%d/%m/%Y') if op.prev_fim else "-",
+            })
+        
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"[ERRO API OPS] {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============ API DETALHES DA OP ============
+@app.route("/api/ops/<int:op_id>")
+def api_op_detalhes(op_id):
+    """API que retorna detalhes de uma OP específica (MOBILE)"""
+    try:
+        op = OP.query.get(op_id)
+        if not op:
+            return jsonify({"success": False, "message": "OP não encontrada"}), 404
+        
+        # Buscar etapas da OP
+        etapas_list = []
+        for etapa in op.etapas:
+            # Buscar tarefas da etapa
+            tarefas_list = []
+            for tarefa in etapa.tarefas:
+                tarefas_list.append({
+                    "id": tarefa.id,
+                    "descricao": tarefa.titulo or tarefa.descricao or "-",
+                    "status": tarefa.status or "PLANEJADO",
+                    "horas_previstas": tarefa.horas_previstas or 0,
+                    "horas_realizadas": tarefa.horas_realizadas or 0,
+                    "percentual": round(tarefa.percentual),
+                    "operador_id": tarefa.responsavel_id,
+                    "operador_nome": tarefa.responsavel.nome if tarefa.responsavel else None,
+                })
+            
+            etapas_list.append({
+                "id": etapa.id,
+                "nome": etapa.nome,
+                "status": etapa.status or "PLANEJADO",
+                "percentual": round(etapa.percentual or 0, 1),
+                "horas_planejadas": etapa.horas_planejadas or 0,
+                "horas_realizadas": etapa.horas_realizadas or 0,
+                "data_inicio": etapa.data_inicio.isoformat() if etapa.data_inicio else None,
+                "data_fim": etapa.data_fim.isoformat() if etapa.data_fim else None,
+                "responsavel_id": etapa.responsavel_id,
+                "responsavel_nome": etapa.responsavel.nome if etapa.responsavel else None,
+                "tarefas": tarefas_list
+            })
+        
+        resultado = {
+            "success": True,
+            "op": {
+                "id": op.id,
+                "numero": op.numero,
+                "obra_id": op.obra_id,
+                "obra_codigo": op.obra.codigo if op.obra else "-",
+                "obra_nome": op.obra.nome if op.obra else "-",
+                "cliente": op.obra.cliente if op.obra else "-",
+                "produto": op.produto or "-",
+                "quantidade": op.quantidade or 1,
+                "data_emissao": op.data_emissao.isoformat() if op.data_emissao else None,
+                "prev_inicio": op.prev_inicio.isoformat() if op.prev_inicio else None,
+                "prev_fim": op.prev_fim.isoformat() if op.prev_fim else None,
+                "percentual": round(op.percentual_calc, 1),
+                "status": op.status or "ABERTA",
+                "etapas": etapas_list
+            }
+        }
+        
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"[ERRO API OP DETALHES] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Erro ao buscar detalhes da OP"}), 500
+
+
+# ============ API ATUALIZAR OP ============
+@app.route("/api/ops/<int:op_id>/atualizar", methods=["POST"])
+def api_op_atualizar(op_id):
+    """API para atualizar dados de uma OP"""
+    try:
+        op = OP.query.get(op_id)
+        if not op:
+            return jsonify({"error": "OP não encontrada"}), 404
+        
+        dados = request.get_json()
+        
+        # Atualizar status se fornecido
+        if "status" in dados:
+            op.status = dados["status"]
+        
+        # Atualizar percentual se fornecido
+        if "percentual" in dados:
+            op.percentual = float(dados["percentual"])
+        
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "OP atualizada com sucesso"})
+    except Exception as e:
+        print(f"[ERRO API ATUALIZAR OP] {str(e)}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+# ============ API ATUALIZAR ETAPA ============
+@app.route("/api/etapas/<int:etapa_id>/atualizar", methods=["POST"])
+def api_etapa_atualizar(etapa_id):
+    """API para atualizar progresso de uma etapa"""
+    try:
+        etapa = Etapa.query.get(etapa_id)
+        if not etapa:
+            return jsonify({"error": "Etapa não encontrada"}), 404
+        
+        dados = request.get_json()
+        
+        # Atualizar percentual se fornecido
+        if "percentual" in dados:
+            etapa.percentual = float(dados["percentual"])
+        
+        # Atualizar status se fornecido
+        if "status" in dados:
+            etapa.status = dados["status"]
+        
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Etapa atualizada com sucesso"})
+    except Exception as e:
+        print(f"[ERRO API ATUALIZAR ETAPA] {str(e)}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+# ============ API LOGIN (MOBILE) ============
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    """API de login para app mobile - retorna JSON"""
+    try:
+        data = request.get_json()
+        email = data.get("email", "").strip()
+        senha = data.get("senha", "").strip()
+        
+        if not email or not senha:
+            return jsonify({
+                "success": False,
+                "message": "Email e senha são obrigatórios"
+            }), 400
+        
+        usuario = Usuario.query.filter_by(email=email).first()
+        
+        if usuario and usuario.verificar_senha(senha) and usuario.ativo:
+            return jsonify({
+                "success": True,
+                "message": "Login realizado com sucesso",
+                "usuario": {
+                    "id": usuario.id,
+                    "nome": usuario.nome,
+                    "email": usuario.email,
+                    "tipo": usuario.tipo
+                }
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Email ou senha incorretos"
+            }), 401
+            
+    except Exception as e:
+        print(f"[API LOGIN] Erro: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Erro ao processar login"
+        }), 500
+
+
+# ============ API ATUALIZAR TAREFA (MOBILE) ============
+@app.route("/api/tarefas/<int:tarefa_id>/atualizar", methods=["POST"])
+def api_tarefa_atualizar(tarefa_id):
+    """API para atualizar status e percentual de uma tarefa"""
+    try:
+        data = request.get_json()
+        usuario_id = data.get("usuario_id")
+        status = data.get("status")
+        percentual = data.get("percentual")
+        
+        if not usuario_id:
+            return jsonify({"success": False, "message": "Usuário não informado"}), 400
+        
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario or not usuario.ativo:
+            return jsonify({"success": False, "message": "Usuário não encontrado ou inativo"}), 404
+        
+        tarefa = Tarefa.query.get(tarefa_id)
+        if not tarefa:
+            return jsonify({"success": False, "message": "Tarefa não encontrada"}), 404
+        
+        etapa = Etapa.query.get(tarefa.etapa_id)
+        if not etapa:
+            return jsonify({"success": False, "message": "Etapa não encontrada"}), 404
+        
+        if not usuario.tem_permissao("editar_tarefa", etapa.nome):
+            return jsonify({"success": False, "message": f"Você não tem permissão para editar tarefas da etapa {etapa.nome}"}), 403
+        
+        if status is not None:
+            tarefa.status = status
+        
+        if status == "CONCLUIDO":
+            tarefa.horas_realizadas = tarefa.horas_previstas
+        elif percentual is not None:
+            perc = float(percentual)
+            tarefa.horas_realizadas = (perc / 100.0) * tarefa.horas_previstas
+        
+        db.session.commit()
+        
+        todas_tarefas_etapa = Tarefa.query.filter_by(etapa_id=etapa.id).all()
+        if todas_tarefas_etapa:
+            horas_totais_etapa = sum(t.horas_previstas for t in todas_tarefas_etapa)
+            horas_concluidas_etapa = sum(t.horas_previstas for t in todas_tarefas_etapa if t.status == "CONCLUIDO")
+            if horas_totais_etapa > 0:
+                etapa.percentual = round((horas_concluidas_etapa / horas_totais_etapa) * 100)
+            
+            if all(t.status == "CONCLUIDO" for t in todas_tarefas_etapa):
+                etapa.status = "CONCLUIDO"
+            elif any(t.status == "EM_EXECUCAO" for t in todas_tarefas_etapa):
+                etapa.status = "EM_EXECUCAO"
+        
+        op = OP.query.get(etapa.op_id)
+        if op:
+            op.percentual = op.percentual_calc
+            op.status = op.status_calc
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Tarefa atualizada com sucesso",
+            "tarefa": {"id": tarefa.id, "status": tarefa.status, "percentual": round(tarefa.percentual)}
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[API ATUALIZAR TAREFA] Erro: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Erro ao atualizar tarefa"}), 500
+
+
+# ============================================
+# FIM DAS ROTAS API
+# ============================================
 
 if __name__ == "__main__":
     with app.app_context():
@@ -2906,3 +3494,150 @@ def admin_sincronizar_todas_etapas():
 
 
 # ============ TELEGRAM NOTIFIER ============
+# ADICIONE ESTAS 2 ROTAS NO SEU app.py (junto com as outras rotas API)
+
+# ============ API CRIAR TAREFA (MOBILE) ============
+@app.route("/api/tarefas/criar", methods=["POST"])
+def api_tarefa_criar():
+    """API para criar uma nova tarefa em uma etapa"""
+    try:
+        data = request.get_json()
+        usuario_id = data.get("usuario_id")
+        etapa_id = data.get("etapa_id")
+        titulo = data.get("titulo", "").strip()
+        descricao = data.get("descricao", "").strip()
+        horas_previstas = data.get("horas_previstas", 0)
+        responsavel_id = data.get("responsavel_id")
+        
+        if not usuario_id:
+            return jsonify({"success": False, "message": "Usuário não informado"}), 400
+        
+        if not etapa_id:
+            return jsonify({"success": False, "message": "Etapa não informada"}), 400
+        
+        if not titulo:
+            return jsonify({"success": False, "message": "Título da tarefa é obrigatório"}), 400
+        
+        # Verificar se usuário existe e está ativo
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario or not usuario.ativo:
+            return jsonify({"success": False, "message": "Usuário não encontrado ou inativo"}), 404
+        
+        # Buscar etapa
+        etapa = Etapa.query.get(etapa_id)
+        if not etapa:
+            return jsonify({"success": False, "message": "Etapa não encontrada"}), 404
+        
+        # Verificar permissão do usuário
+        if not usuario.tem_permissao("criar_tarefa", etapa.nome):
+            return jsonify({
+                "success": False,
+                "message": f"Você não tem permissão para criar tarefas na etapa {etapa.nome}"
+            }), 403
+        
+        # Criar nova tarefa
+        nova_tarefa = Tarefa(
+            etapa_id=etapa_id,
+            titulo=titulo,
+            descricao=descricao,
+            horas_previstas=float(horas_previstas) if horas_previstas else 0.0,
+            horas_realizadas=0.0,
+            responsavel_id=responsavel_id if responsavel_id else None,
+            status="PLANEJADO"
+        )
+        
+        db.session.add(nova_tarefa)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Tarefa criada com sucesso",
+            "tarefa": {
+                "id": nova_tarefa.id,
+                "titulo": nova_tarefa.titulo,
+                "descricao": nova_tarefa.descricao,
+                "horas_previstas": nova_tarefa.horas_previstas,
+                "status": nova_tarefa.status
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[API CRIAR TAREFA] Erro: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Erro ao criar tarefa"}), 500
+
+
+# ============ API DELETAR TAREFA (MOBILE) ============
+@app.route("/api/tarefas/<int:tarefa_id>/deletar", methods=["DELETE", "POST"])
+def api_tarefa_deletar(tarefa_id):
+    """API para deletar uma tarefa"""
+    try:
+        data = request.get_json()
+        usuario_id = data.get("usuario_id")
+        
+        if not usuario_id:
+            return jsonify({"success": False, "message": "Usuário não informado"}), 400
+        
+        # Verificar se usuário existe e está ativo
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario or not usuario.ativo:
+            return jsonify({"success": False, "message": "Usuário não encontrado ou inativo"}), 404
+        
+        # Buscar tarefa
+        tarefa = Tarefa.query.get(tarefa_id)
+        if not tarefa:
+            return jsonify({"success": False, "message": "Tarefa não encontrada"}), 404
+        
+        # Buscar etapa para verificar permissão
+        etapa = Etapa.query.get(tarefa.etapa_id)
+        if not etapa:
+            return jsonify({"success": False, "message": "Etapa não encontrada"}), 404
+        
+        # Verificar permissão do usuário
+        if not usuario.tem_permissao("deletar_tarefa", etapa.nome):
+            return jsonify({
+                "success": False,
+                "message": f"Você não tem permissão para deletar tarefas da etapa {etapa.nome}"
+            }), 403
+        
+        # Deletar tarefa
+        db.session.delete(tarefa)
+        db.session.commit()
+        
+        # Recalcular percentual da etapa
+        todas_tarefas_etapa = Tarefa.query.filter_by(etapa_id=etapa.id).all()
+        if todas_tarefas_etapa:
+            horas_totais_etapa = sum(t.horas_previstas for t in todas_tarefas_etapa)
+            horas_concluidas_etapa = sum(
+                t.horas_previstas for t in todas_tarefas_etapa 
+                if t.status == "CONCLUIDO"
+            )
+            if horas_totais_etapa > 0:
+                etapa.percentual = round((horas_concluidas_etapa / horas_totais_etapa) * 100)
+            else:
+                etapa.percentual = 0
+        else:
+            # Se não há mais tarefas, zerar percentual
+            etapa.percentual = 0
+        
+        # Recalcular percentual e status da OP
+        op = OP.query.get(etapa.op_id)
+        if op:
+            op.percentual = op.percentual_calc
+            op.status = op.status_calc
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Tarefa deletada com sucesso"
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[API DELETAR TAREFA] Erro: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Erro ao deletar tarefa"}), 500
